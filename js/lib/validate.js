@@ -1,3 +1,54 @@
+function pushGradeWarningsAndErrors(values, errors, warnings) {
+  const upGrade = values.up_grade_pct;
+  const downGrade = values.down_grade_pct;
+
+  if (Number.isFinite(upGrade)) {
+    if (upGrade > 30) {
+      errors.push("up_grade_pct は 0〜30 の範囲で入力してください");
+    } else if (upGrade > 20) {
+      warnings.push(
+        "up_grade_pct は 20 を超えています。急坂条件としては許容しますが、通常のランニング条件としては大きめの値です"
+      );
+    }
+  }
+
+  if (Number.isFinite(downGrade)) {
+    if (downGrade > 30) {
+      errors.push("down_grade_pct は 0〜30 の範囲で入力してください");
+    } else if (downGrade > 20) {
+      warnings.push(
+        "down_grade_pct は 20 を超えています。急坂条件としては許容しますが、通常のランニング条件としては大きめの値です"
+      );
+    }
+  }
+}
+
+function pushSpeedWarningsAndErrors(values, errors, warnings) {
+  const dist_km = values.dist_km;
+  const time_min = values.time_min;
+
+  if (
+    Number.isFinite(dist_km) &&
+    Number.isFinite(time_min) &&
+    dist_km > 0 &&
+    time_min > 0
+  ) {
+    const speedKmh = dist_km / (time_min / 60);
+
+    if (speedKmh > 30) {
+      errors.push(`速度が不自然です（${speedKmh.toFixed(1)} km/h）`);
+    } else if (speedKmh < 3) {
+      warnings.push(
+        `速度が非常に遅い値です（${speedKmh.toFixed(1)} km/h）。距離または時間の入力値を確認してください`
+      );
+    } else if (speedKmh > 20) {
+      warnings.push(
+        `速度が非常に速い値です（${speedKmh.toFixed(1)} km/h）。距離または時間の入力値を確認してください`
+      );
+    }
+  }
+}
+
 export function validateDayInput(day) {
   const errors = [];
   const warnings = [];
@@ -27,7 +78,7 @@ export function validateDayInput(day) {
       continue;
     }
     if (v < 0) {
-      errors.push(`${f} が負です`);
+      errors.push(`${f} は0以上で入力してください`);
     }
   }
 
@@ -42,6 +93,9 @@ export function validateDayInput(day) {
   if (Number.isFinite(rpe) && (rpe < 0 || rpe > 10)) {
     errors.push("RPE は 0〜10 の範囲で入力してください");
   }
+
+  /* ---------- 勾配強度の推奨範囲チェック ---------- */
+  pushGradeWarningsAndErrors(values, errors, warnings);
 
   /* ---------- 路面割合 ---------- */
   const surfaceSum =
@@ -101,11 +155,15 @@ export function validateDayInput(day) {
     (Number.isFinite(down_pct) ? down_pct : 0);
 
   // 合計100%超は明らかに不自然
-  if (Number.isFinite(up_pct) && Number.isFinite(down_pct) && slopePortionSum > 100 + 1e-9) {
+  if (
+    Number.isFinite(up_pct) &&
+    Number.isFinite(down_pct) &&
+    slopePortionSum > 100 + 1e-9
+  ) {
     errors.push(`up_pct + down_pct が 100% を超えています（現在: ${slopePortionSum}%）`);
   }
 
-  // 走行日なのに up/down とも 0 は平地として許容するが、極端値は警告しやすく返す
+  // 走行日なのに up/down とも 0 は平地として許容
   if (
     Number.isFinite(steps) &&
     steps > 0 &&
@@ -114,6 +172,9 @@ export function validateDayInput(day) {
   ) {
     errors.push("up_pct + down_pct が不正です");
   }
+
+  /* ---------- 速度チェック ---------- */
+  pushSpeedWarningsAndErrors(values, errors, warnings);
 
   return {
     ok: errors.length === 0,
