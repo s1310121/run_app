@@ -1,43 +1,297 @@
-:root { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
-body { margin: 0; background: #f6f7fb; color: #111; }
-.container { max-width: 980px; margin: 0 auto; padding: 16px; }
-h1 { margin: 8px 0 16px; }
-.muted { color: #555; }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-button { padding: 10px 12px; border: 1px solid #ccc; background: white; border-radius: 10px; cursor: pointer; }
-button.primary { background: #111; color: #fff; border-color: #111; }
-fieldset { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; background: #fff; }
-label { display: grid; gap: 6px; margin: 8px 0; }
-input, select { padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
-textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 10px; background: #fff; }
-.errors { background: #fff0f0; border: 1px solid #ffb3b3; padding: 10px 14px; border-radius: 12px; }
-.app-header { background: #fff; border-bottom: 1px solid #eee; padding: 12px 16px; }
-.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin: 12px 0; }
-.card { background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 12px; }
-.big-number { font-size: 28px; font-weight: 700; }
-.tag { padding: 4px 10px; border-radius: 999px; background: #f0f1f6; }
-.badge { display: inline-block; padding: 6px 12px; border-radius: 999px; background: #f0f1f6; font-weight: 700; }
-.panel { background: #fff; border: 1px solid #eee; border-radius: 16px; padding: 12px; margin: 12px 0; }
-.panel-header { display:flex; gap:10px; align-items:center; justify-content: space-between; flex-wrap: wrap; }
-.grid2 { display:grid; grid-template-columns: 220px 1fr; gap: 8px 12px; padding: 10px 0; }
-table.grid { width: 100%; border-collapse: collapse; }
-table.grid th, table.grid td { border-bottom: 1px solid #eee; padding: 8px; text-align: right; }
-table.grid th:first-child, table.grid td:first-child { text-align: left; }
-table.kv th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
-table.kv td { text-align: right; padding: 6px 8px; border-bottom: 1px solid #eee; }
-details summary { cursor: pointer; font-weight: 700; }
-
-.two-col { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 860px){
-  .two-col { grid-template-columns: 1fr 1fr; }
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
 }
-.sub { margin: 6px 0 10px; font-size: 14px; color: #333; }
 
-/* charts */
-.charts { display: grid; gap: 12px; }
-.chart { background:#fff; border:1px solid #eee; border-radius:16px; padding:12px; }
-canvas { width: 100%; height: auto; border: 1px solid #f0f0f0; border-radius: 12px; background: #fff; }
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f6f7fb;
+  color: #111;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+h1 {
+  margin: 8px 0 12px;
+  font-size: 28px;
+}
+
+h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+p {
+  margin: 0 0 10px;
+}
+
+.muted {
+  color: #555;
+  font-size: 14px;
+}
+
+.sub {
+  margin: 6px 0 10px;
+  font-size: 14px;
+  color: #333;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+
+button:hover {
+  background: #f7f7f7;
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button.primary {
+  background: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+button.primary:hover {
+  background: #222;
+  border-color: #222;
+}
+
+button.danger {
+  background: #fff5f5;
+  color: #b42318;
+  border-color: #f3b2b2;
+}
+
+button.danger:hover {
+  background: #ffecec;
+}
+
+fieldset {
+  border: 1px solid #ddd;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 14px 0;
+  background: #fff;
+}
+
+legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+input,
+select,
+textarea {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #7c8cff;
+  box-shadow: 0 0 0 3px rgba(124, 140, 255, 0.12);
+}
+
+textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+}
+
+.errors,
+.warnings {
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin: 10px 0 14px;
+}
+
+.errors {
+  background: #fff0f0;
+  border: 1px solid #ffb3b3;
+}
+
+.warnings {
+  background: #fff8e8;
+  border: 1px solid #f0d38a;
+}
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  padding: 12px 16px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 12px 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.big-number {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.tag {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f0f1f6;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f0f1f6;
+  font-weight: 700;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.panel-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 8px 12px;
+  padding: 10px 0;
+}
+
+table.grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.grid th,
+table.grid td {
+  border-bottom: 1px solid #eee;
+  padding: 8px;
+  text-align: right;
+}
+
+table.grid th:first-child,
+table.grid td:first-child {
+  text-align: left;
+}
+
+table.kv th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+table.kv td {
+  text-align: right;
+  padding: 6px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 860px) {
+  .two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.charts {
+  display: grid;
+  gap: 12px;
+}
+
+.chart {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  background: #fff;
+}
 
 /* ===== feedback ===== */
 .feedback-headline {
@@ -76,9 +330,194 @@ canvas { width: 100%; height: auto; border: 1px solid #f0f0f0; border-radius: 12
   margin-top: 4px;
 }
 
-@media (max-width: 640px){
+/* ===== input page improvements ===== */
+
+/* 各セクションを視覚的に分ける */
+.section-card,
+#historyPanel,
+#historyCalcPanel,
+#simulationPanel {
+  background: #fff;
+  border: 1px solid #e7e9f0;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 16px 0;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+
+/* 単日入力の中の小分類 */
+.input-subgrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 720px) {
+  .input-subgrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 項目を2列に並べたいとき用 */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 14px;
+}
+
+@media (min-width: 720px) {
+  .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-grid.compact-4 {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (min-width: 860px) {
+  .form-grid.compact-4 {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}
+
+/* セクション冒頭の説明文 */
+.section-lead {
+  margin-bottom: 12px;
+  color: #555;
+  font-size: 14px;
+}
+
+/* 履歴概要 */
+#historySummary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #eceef5;
+  border-radius: 12px;
+  background: #f9fafc;
+  font-weight: 600;
+}
+
+/* 履歴なし */
+#historyEmpty {
+  padding: 14px;
+  border: 1px dashed #d4d8e3;
+  border-radius: 12px;
+  background: #fafbfe;
+  color: #666;
+}
+
+/* 履歴一覧 */
+#historyList {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+
+.history-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #e9ebf2;
+  border-radius: 14px;
+  background: #fcfcfe;
+}
+
+.history-row strong {
+  font-size: 15px;
+}
+
+@media (min-width: 720px) {
+  .history-row {
+    grid-template-columns: 1.2fr repeat(6, minmax(90px, auto)) auto;
+    align-items: center;
+  }
+}
+
+/* 履歴削除ボタン */
+.btnDeleteHistory {
+  justify-self: start;
+}
+
+@media (min-width: 720px) {
+  .btnDeleteHistory {
+    justify-self: end;
+  }
+}
+
+/* ボタン群を少し見やすく */
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* 補助説明 */
+.note-box {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f7f8fc;
+  border: 1px solid #e7eaf4;
+  color: #444;
+  font-size: 14px;
+}
+
+/* 主要ボタンを少し大きく */
+button.primary.emphasis {
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+/* 危険操作 */
+#btnClearHistory,
+#btnReplaceFromCsv {
+  border-color: #e2c2c2;
+}
+
+/* CSVテキストを読みやすく */
+#csvText {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 入力ページの余白整理 */
+form > fieldset + fieldset,
+form > fieldset + section,
+form > section + fieldset,
+form > section + section {
+  margin-top: 18px;
+}
+
+@media (max-width: 640px) {
   .grid2 {
     grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .container {
+    padding: 16px 12px 32px;
+  }
+
+  button {
+    width: 100%;
+  }
+
+  .row {
+    align-items: stretch;
+  }
+
+  #historySummary {
+    flex-direction: column;
+    gap: 6px;
   }
 }
 
