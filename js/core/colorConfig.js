@@ -17,7 +17,6 @@ export const COLOR = {
   },
 
   charts: {
-
     /* 外的負荷分解 */
     extTerms: {
       term_speed: "#0072B2",
@@ -33,12 +32,11 @@ export const COLOR = {
 
     /* 部位別ラインカラー（9部位） */
     parts: {
-
       /* 体幹 */
       "腰骨盤部": "#CC79A7",
 
       /* 股関節 */
-      "股関節殿部": "#0072B2",
+      "股関節殿部": "#1F4E79",
 
       /* 大腿 */
       "大腿": "#009E73",
@@ -50,7 +48,7 @@ export const COLOR = {
       "前下腿": "#56B4E9",
 
       /* 後下腿 */
-      "後下腿": "#0072B2",
+      "後下腿": "#17BECF",
 
       /* アキレス腱 */
       "アキレス腱": "#D55E00",
@@ -64,23 +62,24 @@ export const COLOR = {
   },
 };
 
-
 /* S_k → 色 */
 export function colorForSpikeS(S, theta = Math.log(1.5)) {
-
   const s = Number(S);
   const th = Number(theta);
 
   if (!Number.isFinite(s)) return COLOR.spike.neutral;
 
-  if (Number.isFinite(th) && s >= th)
+  if (Number.isFinite(th) && s >= th) {
     return COLOR.spike.warn;
+  }
 
-  if (s > 0)
+  if (s > 0) {
     return COLOR.spike.increase;
+  }
 
-  if (s < 0)
+  if (s < 0) {
     return COLOR.spike.recovery;
+  }
 
   return COLOR.spike.neutral;
 }
