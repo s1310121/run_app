@@ -5,16 +5,172 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./css/base.css" />
   <title>End</title>
+
+  <style>
+    .end-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: linear-gradient(180deg, #f7f8fc 0%, #eef2fb 100%);
+    }
+
+    .end-shell {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .end-card {
+      background: #fff;
+      border: 1px solid #e8ebf3;
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 10px 30px rgba(20, 30, 60, 0.06);
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .end-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #eef6ee;
+      color: #2f7d32;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .end-title {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.3;
+    }
+
+    .end-subtitle {
+      margin: 0 0 12px;
+      color: #444;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .end-note {
+      margin: 0;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .end-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    .end-actions button {
+      min-width: 160px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 860px) {
+      .info-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .info-card {
+      background: #fff;
+      border: 1px solid #e8ebf3;
+      border-radius: 18px;
+      padding: 18px 16px;
+      box-shadow: 0 4px 16px rgba(20, 30, 60, 0.04);
+    }
+
+    .info-card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .danger-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff7f7;
+      border: 1px solid #f2d0d0;
+      color: #8a3131;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 640px) {
+      .end-title {
+        font-size: 25px;
+      }
+
+      .end-actions {
+        flex-direction: column;
+      }
+
+      .end-actions button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <h1>終了</h1>
-    <p class="muted">ローカルに保存された入力・結果は保持されています。</p>
+  <main class="end-wrap">
+    <div class="end-shell">
+      <section class="end-card">
+        <div class="end-badge">処理完了</div>
+        <h1 class="end-title">終了</h1>
+        <p class="end-subtitle">
+          アプリの操作を終了しました。必要に応じて、続けて入力・確認・再計算を行えます。
+        </p>
+        <p class="end-note">
+          ローカルに保存された入力データ・設定・計算結果は、現在このブラウザ内に保持されています。
+        </p>
 
-    <div class="row">
-      <button id="btnAgain" class="primary" type="button">もう一度</button>
-      <button id="btnHome" type="button">最初へ</button>
-      <button id="btnClear" type="button">保存データ削除</button>
+        <div class="end-actions">
+          <button id="btnAgain" class="primary" type="button">もう一度使う</button>
+          <button id="btnHome" type="button">最初へ戻る</button>
+          <button id="btnClear" type="button">保存データを削除</button>
+        </div>
+      </section>
+
+      <section class="info-grid">
+        <article class="info-card">
+          <h2>現在の状態</h2>
+          <p>
+            これまでに入力した履歴、設定値、計算結果は保持されています。
+            次回再開時も同じブラウザであれば続きから確認できます。
+          </p>
+        </article>
+
+        <article class="info-card">
+          <h2>注意事項</h2>
+          <p>
+            保存データの削除を実行すると、入力履歴・設定・結果がブラウザから消去されます。
+          </p>
+          <div class="danger-note">
+            研究記録として残したい場合は、削除前にCSVやJSONを保存しておくことをおすすめします。
+          </div>
+        </article>
+      </section>
     </div>
   </main>
 

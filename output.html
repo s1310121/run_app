@@ -4,34 +4,39 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./css/base.css" />
-  <title>Output</title>
+  <title>出力</title>
 
   <style>
-    .modal{ display:none; position:fixed; inset:0; z-index:9999; }
-    .modal.open{ display:block; }
-    .modal-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,0.35); }
-    .modal-panel{
+    .modal { display:none; position:fixed; inset:0; z-index:9999; }
+    .modal.open { display:block; }
+    .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.35); }
+    .modal-panel {
       position:relative;
-      margin: 24px auto;
-      max-width: 1100px;
+      margin:24px auto;
+      max-width:1100px;
       background:#fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+      border-radius:16px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.18);
       overflow:hidden;
     }
-    .modal-header{
-      display:flex; justify-content:space-between; align-items:center;
-      padding: 12px 14px; border-bottom:1px solid #eee;
-      gap: 12px;
-      flex-wrap: wrap;
+    .modal-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:12px 14px;
+      border-bottom:1px solid #eee;
+      gap:12px;
+      flex-wrap:wrap;
     }
-    .modal-body{ padding: 14px; }
-    #bodySvg rect, #bodySvg circle, #bodySvg ellipse{
+    .modal-body { padding:14px; }
+
+    #bodySvg rect, #bodySvg circle, #bodySvg ellipse {
       fill:#e0e0e0;
       stroke:#666;
       stroke-width:1;
     }
-    .legend-box{
+
+    .legend-box {
       display:inline-block;
       width:14px;
       height:14px;
@@ -41,72 +46,343 @@
       border:1px solid #bbb;
     }
 
-    .feedback-headline{
-      font-weight: 700;
-      margin-bottom: 10px;
-      line-height: 1.6;
+    .output-header {
+      background:#fff;
+      border-bottom:1px solid #eceef5;
+      padding:16px;
     }
-    .feedback-blocks{
-      display: grid;
-      gap: 12px;
+
+    .output-header-top {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      flex-wrap:wrap;
     }
-    .feedback-block{
-      border: 1px solid #e8e8e8;
-      border-radius: 10px;
-      padding: 12px 14px;
-      background: #fff;
+
+    .output-title-wrap h1 {
+      margin:0 0 6px;
     }
+
+    .output-title-wrap p {
+      margin:0;
+      color:#555;
+      font-size:14px;
+    }
+
+    .output-toolbar {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .toolbar-group {
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      padding:8px 10px;
+      border:1px solid #eceef5;
+      border-radius:12px;
+      background:#fafbff;
+    }
+
+    .summary-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+      gap:12px;
+      margin:16px 0;
+    }
+
+    .summary-card {
+      background:#fff;
+      border:1px solid #e9ebf2;
+      border-radius:16px;
+      padding:16px;
+    }
+
+    .summary-card h2 {
+      font-size:15px;
+      margin:0 0 10px;
+      color:#444;
+    }
+
+    .summary-meta {
+      margin-top:8px;
+      color:#666;
+      font-size:13px;
+    }
+
+    .output-main-grid {
+      display:grid;
+      grid-template-columns:1.1fr 0.9fr;
+      gap:16px;
+      margin:16px 0;
+    }
+
+    @media (max-width: 900px) {
+      .output-main-grid {
+        grid-template-columns:1fr;
+      }
+    }
+
+    .section-card {
+      background:#fff;
+      border:1px solid #e9ebf2;
+      border-radius:16px;
+      padding:16px;
+      margin:16px 0;
+    }
+
+    .section-card h2 {
+      margin:0 0 10px;
+    }
+
+    .section-lead {
+      margin:0 0 12px;
+      color:#555;
+      font-size:14px;
+    }
+
+    .quick-info {
+      display:grid;
+      gap:10px;
+    }
+
+    .quick-info-box {
+      padding:12px 14px;
+      border:1px solid #eceef5;
+      border-radius:12px;
+      background:#fafbfe;
+    }
+
+    .quick-info-title {
+      font-size:13px;
+      color:#666;
+      margin-bottom:4px;
+    }
+
+    .quick-info-value {
+      font-size:18px;
+      font-weight:700;
+    }
+
+    .panel-header {
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .action-row {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .chart-stack {
+      display:grid;
+      gap:14px;
+    }
+
+    .chart-card {
+      background:#fff;
+      border:1px solid #e9ebf2;
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .chart-card h3 {
+      margin:0 0 6px;
+    }
+
+    .internal-panel details + details {
+      margin-top:10px;
+    }
+
+    .feedback-headline {
+      font-weight:700;
+      margin-bottom:10px;
+      line-height:1.7;
+    }
+
+    .feedback-blocks {
+      display:grid;
+      gap:12px;
+    }
+
+    .feedback-block {
+      border:1px solid #e8e8e8;
+      border-radius:12px;
+      padding:12px 14px;
+      background:#fff;
+    }
+
     .feedback-block p,
-    .feedback-block ul{
-      margin: 0;
-      line-height: 1.7;
+    .feedback-block ul {
+      margin:0;
+      line-height:1.7;
     }
-    .feedback-block ul{
-      padding-left: 1.2em;
+
+    .feedback-block ul {
+      padding-left:1.2em;
     }
-    .feedback-block li + li{
-      margin-top: 4px;
+
+    .feedback-block li + li {
+      margin-top:4px;
     }
   </style>
 </head>
 <body>
-  <header class="app-header">
-    <h1>出力（検証ビュー）</h1>
-    <div class="toolbar">
-      <label>日付 <select id="dateSelect"></select></label>
-      <button id="btnBack" type="button">入力に戻る</button>
-      <button id="btnSensitivity" type="button">感度解析</button>
-      <button id="btnBodyView" type="button">人体ビュー</button>
-      <button id="btnSpikeDays" type="button">スパイク日一覧</button>
-      <button id="btnEnd" type="button">終了</button>
+  <header class="output-header">
+    <div class="output-header-top">
+      <div class="output-title-wrap">
+        <h1>出力（検証ビュー）</h1>
+        <p>選択した日付の結果を確認し、部位別負荷・スパイク指標・内部検証情報を閲覧できます。</p>
+      </div>
+
+      <div class="output-toolbar">
+        <div class="toolbar-group">
+          <label>日付 <select id="dateSelect"></select></label>
+          <button id="btnBack" type="button">入力画面に戻る</button>
+        </div>
+
+        <div class="toolbar-group">
+          <button id="btnBodyView" type="button">人体ビュー</button>
+          <button id="btnSpikeDays" type="button">スパイク日一覧</button>
+          <button id="btnSensitivity" type="button">感度分析</button>
+          <button id="btnEnd" type="button">終了</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="container">
-    <section class="cards">
-      <article class="card">
-        <h2>G(t)</h2>
+    <section class="summary-grid">
+      <article class="summary-card">
+        <h2>外的総負荷 G(t)</h2>
         <div id="cardG" class="big-number"></div>
+        <div class="summary-meta">当日の外的総負荷の指標</div>
       </article>
-      <article class="card">
-        <h2>max S_k</h2>
+
+      <article class="summary-card">
+        <h2>最大スパイク指数 max S_k</h2>
         <div class="row">
           <div id="cardMaxS" class="big-number"></div>
           <div id="cardMaxPart" class="tag"></div>
         </div>
+        <div class="summary-meta">最も高い部位別スパイク指標</div>
       </article>
-      <article class="card">
-        <h2>警告</h2>
+
+      <article class="summary-card">
+        <h2>警告状態</h2>
         <div id="cardWarn" class="badge"></div>
-        <div class="muted">θ=<span id="thetaValue"></span></div>
+        <div class="summary-meta">閾値 θ = <span id="thetaValue"></span></div>
       </article>
     </section>
 
-    <section class="panel">
-      <h2>検証パネル</h2>
+    <section class="output-main-grid">
+      <section class="section-card">
+        <h2>当日の結果まとめ</h2>
+        <p class="section-lead">
+          当日の負荷状態について、警告の有無や部位別の特徴を文章で確認できます。
+        </p>
+        <div id="feedbackHeadline" class="feedback-headline"></div>
+        <div id="feedbackBlocks" class="feedback-blocks"></div>
+      </section>
+
+      <section class="section-card">
+        <h2>重要ポイント</h2>
+        <p class="section-lead">
+          当日の結果のうち、最初に確認したい重要項目をまとめています。
+        </p>
+
+        <div class="quick-info">
+          <div class="quick-info-box">
+            <div class="quick-info-title">最大スパイク部位</div>
+            <div id="cardMaxPartClone" class="quick-info-value">-</div>
+          </div>
+          <div class="quick-info-box">
+            <div class="quick-info-title">警告状態</div>
+            <div id="cardWarnClone" class="quick-info-value">-</div>
+          </div>
+          <div class="quick-info-box">
+            <div class="quick-info-title">標準化状態</div>
+            <div id="chkStdReadyClone" class="quick-info-value">-</div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="section-card">
+      <div class="panel-header">
+        <div>
+          <h2>部位別結果</h2>
+          <p class="section-lead">9部位それぞれについて、状態・スパイク指標・負荷量を確認できます。</p>
+        </div>
+
+        <div class="action-row">
+          <label class="toggle">
+            <input type="checkbox" id="toggleDetailCols" />
+            詳細列
+          </label>
+          <button id="btnCopyJson" type="button">JSONをコピー</button>
+          <button id="btnDownloadJson" type="button">JSONを保存</button>
+          <button id="btnDownloadCSV" type="button">結果CSVを保存</button>
+          <button id="btnDownloadCSVWide" type="button">結果CSVを保存（ワイド形式）</button>
+        </div>
+      </div>
+
+      <div id="spikeRank" class="muted"></div>
+      <div id="partsTable"></div>
+    </section>
+
+    <section class="section-card">
+      <h2>時系列グラフ</h2>
+      <p class="section-lead">
+        外的負荷の補正項、全体のスパイク指標、部位別スパイク指標の推移を確認できます。
+      </p>
+
+      <div class="action-row" style="margin-bottom:10px;">
+        <label class="toggle">
+          <input type="checkbox" id="chkOnlyReady" checked />
+          標準化成立日（t≥29）のみ表示
+        </label>
+      </div>
+
+      <div class="chart-stack">
+        <div class="chart-card">
+          <h3 class="sub">外的負荷の補正項の推移</h3>
+          <canvas id="chartExtTerms" width="900" height="260"></canvas>
+          <div class="muted">速度補正・勾配補正・路面補正の推移を表示します。</div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="sub">全体指標 G(t) と max S_k</h3>
+          <canvas id="chartSpike" width="900" height="260"></canvas>
+          <div class="muted">全体負荷指標 G(t) と最大スパイク指数 max S_k を表示します。標準化未成立日は欠損です。</div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="sub">部位別スパイク指標 S_k(t)</h3>
+          <canvas id="chartPartsS" width="900" height="340"></canvas>
+          <div class="muted">S=0 は平常、S&gt;0 は急増、S&lt;0 は回復を示します。</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card internal-panel">
+      <h2>内部検証</h2>
+      <p class="section-lead">
+        入力整合性、保存則、標準化、EWMA など、モデル内部の確認用情報を表示します。
+      </p>
 
       <details open>
-        <summary>入力整合</summary>
+        <summary>入力値の整合性</summary>
         <div class="grid2">
           <div>路面合計</div><div id="chkSurfaceSum"></div>
           <div>上り+下り</div><div id="chkSlopeSum"></div>
@@ -120,7 +396,7 @@
       </details>
 
       <details open>
-        <summary>外的・内的（内訳含む）</summary>
+        <summary>外的負荷・内的負荷</summary>
         <div id="tableTotal"></div>
       </details>
 
@@ -142,71 +418,15 @@
       </details>
 
       <details>
-        <summary>EWMA</summary>
+        <summary>EWMA状態量</summary>
         <div id="ewmaInfo"></div>
       </details>
-    </section>
-
-    <section class="panel">
-      <h2>詳細フィードバック</h2>
-      <div id="feedbackHeadline" class="feedback-headline"></div>
-      <div id="feedbackBlocks" class="feedback-blocks"></div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>部位別詳細</h2>
-        <label class="toggle">
-          <input type="checkbox" id="toggleDetailCols" />
-          詳細列
-        </label>
-        <button id="btnCopyJson" type="button">JSONコピー</button>
-        <button id="btnDownloadJson" type="button">JSON保存</button>
-        <button id="btnDownloadCSV" type="button">結果CSV保存</button>
-        <button id="btnDownloadCSVWide" type="button">結果CSV保存（ワイド）</button>
-      </div>
-
-      <div id="spikeRank" class="muted"></div>
-      <div id="partsTable"></div>
-    </section>
-
-    <section class="panel">
-      <h2>検証グラフ</h2>
-      <p class="muted">外的負荷の分解（term_speed / term_slope / term_surface）と G(t)、部位別 S_k(t) を時系列で表示します。</p>
-
-      <div class="row">
-        <label class="toggle">
-          <input type="checkbox" id="chkOnlyReady" checked />
-          標準化成立日（t≥29）のみ表示
-        </label>
-      </div>
-
-      <div class="charts">
-        <div class="chart">
-          <h3 class="sub">外的負荷の補正項（倍率）</h3>
-          <canvas id="chartExtTerms" width="900" height="260"></canvas>
-          <div class="muted">term_speed（Vratio^2）, term_slope, term_surface</div>
-        </div>
-
-        <div class="chart">
-          <h3 class="sub">G(t) / max S_k</h3>
-          <canvas id="chartSpike" width="900" height="260"></canvas>
-          <div class="muted">G(t), max S_k（標準化未成立日は欠損）</div>
-        </div>
-
-        <div class="chart">
-          <h3 class="sub">部位別 S_k(t)（9本）</h3>
-          <canvas id="chartPartsS" width="900" height="340"></canvas>
-          <div class="muted">S=0:平常 / S&gt;0:急増 / S&lt;0:回復（標準化未成立日は欠損）</div>
-        </div>
-      </div>
     </section>
   </main>
 
   <!-- ===== 人体ビュー モーダル ===== -->
   <div id="bodyModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
-
     <div class="modal-panel" role="dialog" aria-modal="true" aria-label="人体ビュー">
       <div class="modal-header">
         <h2>人体ビュー（9部位）</h2>
@@ -220,7 +440,6 @@
         <div class="two-col">
           <div>
             <svg id="bodySvg" viewBox="0 0 260 460" width="320" height="440">
-              <!-- 背景シルエット -->
               <g opacity="0.18">
                 <circle cx="130" cy="42" r="26"></circle>
                 <rect x="98" y="72" width="64" height="112" rx="28"></rect>
@@ -231,7 +450,6 @@
                 <rect x="134" y="384" width="34" height="22" rx="8"></rect>
               </g>
 
-              <!-- 9部位パッチ -->
               <rect id="part-腰骨盤部" x="102" y="118" width="56" height="32" rx="10"></rect>
               <rect id="part-股関節殿部" x="94" y="156" width="72" height="34" rx="14"></rect>
               <rect id="part-大腿" x="96" y="202" width="68" height="52" rx="18"></rect>
@@ -267,12 +485,11 @@
   <!-- ===== スパイク日一覧 モーダル ===== -->
   <div id="spikeModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
-
     <div class="modal-panel" role="dialog" aria-modal="true" aria-label="スパイク日一覧">
       <div class="modal-header">
         <h2>スパイク日一覧（寄与分解）</h2>
         <div class="row" style="gap:8px; align-items:center;">
-          <button id="btnDownloadSpikeCSV" type="button">CSV保存</button>
+          <button id="btnDownloadSpikeCSV" type="button">CSVを保存</button>
           <button id="btnSpikeClose" type="button">閉じる</button>
         </div>
       </div>

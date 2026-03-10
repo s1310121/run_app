@@ -5,15 +5,246 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./css/base.css" />
   <title>Start</title>
+
+  <style>
+    .start-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background: linear-gradient(180deg, #f7f8fc 0%, #eef2fb 100%);
+    }
+
+    .start-shell {
+      width: 100%;
+      max-width: 980px;
+    }
+
+    .hero-card {
+      background: #fff;
+      border: 1px solid #e8ebf3;
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 10px 30px rgba(20, 30, 60, 0.06);
+      margin-bottom: 18px;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #f0f4ff;
+      color: #3559c7;
+      font-weight: 700;
+      font-size: 13px;
+      margin-bottom: 12px;
+    }
+
+    .hero-title {
+      margin: 0 0 10px;
+      font-size: 32px;
+      line-height: 1.3;
+    }
+
+    .hero-subtitle {
+      margin: 0 0 12px;
+      color: #444;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .hero-note {
+      margin: 0;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .start-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .start-actions button {
+      min-width: 160px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 860px) {
+      .info-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    .start-card {
+      background: #fff;
+      border: 1px solid #e8ebf3;
+      border-radius: 18px;
+      padding: 18px 16px;
+      box-shadow: 0 4px 16px rgba(20, 30, 60, 0.04);
+    }
+
+    .start-card h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .flow-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .flow-item {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f2f7;
+    }
+
+    .flow-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .flow-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #111;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .flow-item h3 {
+      margin: 0 0 4px;
+      font-size: 15px;
+    }
+
+    .flow-item p {
+      margin: 0;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .notice-list {
+      margin: 0;
+      padding-left: 1.2em;
+      color: #444;
+    }
+
+    .notice-list li {
+      line-height: 1.8;
+    }
+
+    .notice-list li + li {
+      margin-top: 4px;
+    }
+
+    .danger-note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #fff7f7;
+      border: 1px solid #f2d0d0;
+      color: #8a3131;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 640px) {
+      .hero-title {
+        font-size: 26px;
+      }
+
+      .start-actions {
+        flex-direction: column;
+      }
+
+      .start-actions button {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <h1>部位別指数減衰型負荷モデル</h1>
-    <p class="muted">本モデルは負荷状態の可視化を目的とします（診断・予測・因果推論ではありません）。</p>
+  <main class="start-wrap">
+    <div class="start-shell">
+      <section class="hero-card">
+        <div class="hero-badge">研究用Webアプリケーション</div>
+        <h1 class="hero-title">部位別指数減衰型負荷モデル</h1>
+        <p class="hero-subtitle">
+          ランニングデータをもとに、身体部位別トレーニング負荷の時間変化と
+          スパイク指標を可視化するための検証アプリです。
+        </p>
+        <p class="hero-note">
+          本モデルは負荷状態の可視化を目的とした研究用ツールです。
+          診断・予測・因果推論を目的とするものではありません。
+        </p>
 
-    <div class="row">
-      <button id="btnStart" class="primary">はじめる</button>
-      <button id="btnReset">保存データ消去</button>
+        <div class="start-actions">
+          <button id="btnStart" class="primary">はじめる</button>
+          <button id="btnReset">保存データを消去</button>
+        </div>
+      </section>
+
+      <section class="info-grid">
+        <article class="start-card">
+          <h2>使い方</h2>
+          <div class="flow-list">
+            <div class="flow-item">
+              <div class="flow-num">1</div>
+              <div>
+                <h3>入力</h3>
+                <p>単日入力またはCSV入力で日次データを登録し、履歴を作成します。</p>
+              </div>
+            </div>
+
+            <div class="flow-item">
+              <div class="flow-num">2</div>
+              <div>
+                <h3>出力確認</h3>
+                <p>部位別の負荷状態、スパイク指標、時系列グラフを確認します。</p>
+              </div>
+            </div>
+
+            <div class="flow-item">
+              <div class="flow-num">3</div>
+              <div>
+                <h3>感度分析</h3>
+                <p>パラメータを変化させて、結果の変動やモデルの感度を比較します。</p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="start-card">
+          <h2>注意事項</h2>
+          <ul class="notice-list">
+            <li>本アプリは個人内の負荷構造を理解するための検証用ツールです。</li>
+            <li>結果はモデルに基づく推定値であり、医学的判断を行うものではありません。</li>
+            <li>入力データや計算結果はブラウザ内に保存されます。</li>
+          </ul>
+
+          <div class="danger-note">
+            「保存データを消去」を押すと、入力履歴・設定・結果がブラウザから削除されます。
+          </div>
+        </article>
+      </section>
     </div>
   </main>
 

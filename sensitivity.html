@@ -4,56 +4,270 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./css/base.css" />
-  <title>Sensitivity</title>
+  <title>感度分析</title>
+
+  <style>
+    .grid3 {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    @media (min-width: 860px) {
+      .grid3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .section-card {
+      background: #fff;
+      border: 1px solid #e9ebf2;
+      border-radius: 16px;
+      padding: 16px;
+      margin: 16px 0;
+    }
+
+    .section-card h2 {
+      margin: 0 0 10px;
+    }
+
+    .section-lead {
+      margin: 0 0 12px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .summary-card {
+      background: #fafbfe;
+      border: 1px solid #eceef5;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .summary-card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    .summary-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .chart-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .chart-card {
+      background: #fff;
+      border: 1px solid #e9ebf2;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .chart-card h3 {
+      margin: 0 0 6px;
+    }
+
+    .chart-card .muted {
+      margin-top: 6px;
+    }
+
+    .result-box {
+      margin-top: 12px;
+    }
+
+    #resultTable {
+      overflow-x: auto;
+    }
+
+    .note-box {
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #f7f8fc;
+      border: 1px solid #e7eaf4;
+      color: #444;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
   <header class="app-header">
-    <h1>感度解析（パラメータ sweep）</h1>
+    <h1>感度分析</h1>
     <div class="toolbar">
-      <button id="btnBack" type="button">出力に戻る</button>
+      <button id="btnBack" type="button">出力画面に戻る</button>
     </div>
   </header>
 
   <main class="container">
-    <section class="panel">
-      <h2>説明</h2>
-      <p class="muted">
-        出力（results）に保存された日次 input を復元し、各パラメータ組合せで再計算してサマリCSVを出力します。
+    <section class="section-card">
+      <h2>概要</h2>
+      <p class="section-lead">
+        保存済みの入力データを用いて、指定したパラメータ範囲で再計算を行い、出力指標の変化を比較します。
       </p>
-      <ul class="muted">
-        <li>最終日の G / maxS</li>
-        <li>期間内ピーク maxS（ピーク日・部位）</li>
-        <li>θ超過回数（maxS &gt; θ）</li>
-        <li>peakMaxM_eff（実効内的負荷配分の最大値）</li>
-        <li>部位差分 |S膝-S大腿|, |Sアキレス腱-S後下腿|, |S足底部-S足関節・足背部|</li>
-      </ul>
-      <p class="muted">
+
+      <div class="note-box">
+        主な確認指標:
+        最終日の G / maxS、期間内ピーク maxS（ピーク日・部位）、θ超過回数、peakMaxM_eff、
+        および主要部位間の差分指標。
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
         新9部位モデルでは、環境因子の影響は主として外的負荷分配側に集約し、
         内的負荷は収縮系部位への基準配分と、後下腿からアキレス腱・足底部への再配分で表現します。
       </p>
     </section>
 
-    <section class="panel">
-      <h2>パラメータ範囲</h2>
-      <p class="muted">カンマ区切りで入力してください（例: 0.1,0.25,0.4）</p>
+    <section class="section-card">
+      <h2>パラメータ設定</h2>
+      <p class="section-lead">
+        カンマ区切りで入力してください。例: <code>0.1,0.25,0.4</code>
+      </p>
 
       <div class="grid3">
-        <label>ks（路面）<input id="ks" value="0.5"></label>
-        <label>kG_plus<input id="kG_plus" value="10"></label>
-        <label>kG_minus<input id="kG_minus" value="10"></label>
+        <label>
+          ks（路面）
+          <input id="ks" value="0.5" />
+        </label>
 
-        <label>Vref<input id="Vref" value="3.0"></label>
-        <label>tauAch（後下腿→アキレス腱）<input id="tauAch" value="0.1,0.2,0.3"></label>
-        <label>tauPlantar（後下腿→足底部）<input id="tauPlantar" value="0.05,0.1,0.15"></label>
+        <label>
+          kG_plus
+          <input id="kG_plus" value="10" />
+        </label>
 
-        <label>betaScale（部位分配感度倍率）<input id="betaScale" value="0.5,1.0,1.5"></label>
+        <label>
+          kG_minus
+          <input id="kG_minus" value="10" />
+        </label>
+
+        <label>
+          Vref
+          <input id="Vref" value="3.0" />
+        </label>
+
+        <label>
+          tauAch（後下腿→アキレス腱）
+          <input id="tauAch" value="0.1,0.2,0.3" />
+        </label>
+
+        <label>
+          tauPlantar（後下腿→足底部）
+          <input id="tauPlantar" value="0.05,0.1,0.15" />
+        </label>
+
+        <label>
+          betaScale（部位分配感度倍率）
+          <input id="betaScale" value="0.5,1.0,1.5" />
+        </label>
       </div>
 
-      <div class="row" style="gap:12px; align-items:center;">
-        <button id="btnRun" type="button">sweep実行 → CSV保存</button>
+      <div class="action-row">
+        <button id="btnRun" type="button" class="primary">感度分析を実行してCSV保存</button>
         <span id="status" class="muted"></span>
       </div>
+
       <div id="errors" class="muted" style="margin-top:8px;"></div>
+    </section>
+
+    <section class="section-card">
+      <h2>実行結果の概要</h2>
+      <p class="section-lead">
+        感度分析の実行後に、試行数や対象指標の概要を表示します。
+      </p>
+
+      <div class="summary-grid">
+        <article class="summary-card">
+          <h3>試行数</h3>
+          <div id="summaryCaseCount" class="summary-value">-</div>
+        </article>
+
+        <article class="summary-card">
+          <h3>比較対象指標</h3>
+          <div id="summaryMetric" class="summary-value">-</div>
+        </article>
+
+        <article class="summary-card">
+          <h3>変動幅</h3>
+          <div id="summaryRange" class="summary-value">-</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>グラフ</h2>
+      <p class="section-lead">
+        パラメータの変化に対して、出力指標がどのように変動するかを可視化します。
+      </p>
+
+      <div class="action-row">
+        <label>
+          表示指標
+          <select id="chartMetric">
+            <option value="finalG">最終日の G</option>
+            <option value="finalMaxS">最終日の maxS</option>
+            <option value="peakMaxS">期間内ピーク maxS</option>
+            <option value="warnCount">θ超過回数</option>
+            <option value="peakMaxM_eff">peakMaxM_eff</option>
+          </select>
+        </label>
+
+        <label>
+          横軸パラメータ
+          <select id="chartParam">
+            <option value="ks">ks</option>
+            <option value="kG_plus">kG_plus</option>
+            <option value="kG_minus">kG_minus</option>
+            <option value="Vref">Vref</option>
+            <option value="tauAch">tauAch</option>
+            <option value="tauPlantar">tauPlantar</option>
+            <option value="betaScale">betaScale</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="chart-grid result-box">
+        <div class="chart-card">
+          <h3 class="sub">感度分析結果の折れ線グラフ</h3>
+          <canvas id="chartSensitivityLine" width="900" height="320"></canvas>
+          <div class="muted">
+            横軸にパラメータ値、縦軸に選択した出力指標を表示します。
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="sub">基準値との差分</h3>
+          <canvas id="chartSensitivityBar" width="900" height="320"></canvas>
+          <div class="muted">
+            基準ケースとの差分を棒グラフで表示します。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card">
+      <h2>結果一覧</h2>
+      <p class="section-lead">
+        各パラメータ組合せの計算結果を表で確認できます。
+      </p>
+      <div id="resultTable"></div>
     </section>
   </main>
 
