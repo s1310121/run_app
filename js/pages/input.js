@@ -7,16 +7,25 @@ import {
   saveResults,
   saveConfig,
   loadConfig,
+  upsertDayEntry,
+  upsertDayEntries,
+  loadDayEntries,
+  removeDayEntry,
+  clearDayEntries,
+  replaceDayEntries,
 } from "../lib/storage.js";
 
 function getVal(id) {
-  return document.getElementById(id).value;
+  return document.getElementById(id)?.value ?? "";
 }
+
 function num(id) {
   return Number(getVal(id));
 }
+
 function setVal(id, v) {
-  document.getElementById(id).value = v;
+  const el = document.getElementById(id);
+  if (el) el.value = v;
 }
 
 function readForm() {
@@ -67,11 +76,100 @@ function showWarnings(warnings = []) {
   box.style.display = warnings.length ? "block" : "none";
 }
 
+function formatNumber(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function sortDays(days) {
+  return [...days].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+
+function getHistorySummary(days) {
+  const sorted = sortDays(days);
+  if (!sorted.length) {
+    return {
+      count: 0,
+      start: "-",
+      end: "-",
+    };
+  }
+
+  return {
+    count: sorted.length,
+    start: sorted[0].date ?? "-",
+    end: sorted[sorted.length - 1].date ?? "-",
+  };
+}
+
+function renderHistory() {
+  const days = loadDayEntries();
+  const sorted = sortDays(days);
+
+  const summaryBox = document.getElementById("historySummary");
+  const listBox = document.getElementById("historyList");
+  const emptyBox = document.getElementById("historyEmpty");
+
+  if (!summaryBox || !listBox) return;
+
+  const summary = getHistorySummary(sorted);
+  summaryBox.innerHTML = `
+    <div>保存件数: ${summary.count}日分</div>
+    <div>期間: ${summary.start} ～ ${summary.end}</div>
+  `;
+
+  if (!sorted.length) {
+    listBox.innerHTML = "";
+    if (emptyBox) emptyBox.style.display = "block";
+    return;
+  }
+
+  if (emptyBox) emptyBox.style.display = "none";
+
+  listBox.innerHTML = sorted
+    .map(
+      (d) => `
+        <div class="history-row" data-date="${d.date}">
+          <div><strong>${d.date}</strong></div>
+          <div>steps: ${formatNumber(d.steps)}</div>
+          <div>dist_km: ${formatNumber(d.dist_km)}</div>
+          <div>time_min: ${formatNumber(d.time_min)}</div>
+          <div>RPE: ${formatNumber(d.RPE)}</div>
+          <div>up_pct: ${formatNumber(d.up_pct)}</div>
+          <div>down_pct: ${formatNumber(d.down_pct)}</div>
+          <button type="button" class="btnDeleteHistory" data-date="${d.date}">
+            この日を削除
+          </button>
+        </div>
+      `
+    )
+    .join("");
+
+  listBox.querySelectorAll(".btnDeleteHistory").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const date = btn.dataset.date;
+      if (!date) return;
+      removeDayEntry(date);
+      renderHistory();
+    });
+  });
+}
+
+function bindHistoryActions() {
+  document.getElementById("btnClearHistory")?.addEventListener("click", () => {
+    const ok = confirm("保存済み履歴をすべて削除しますか？");
+    if (!ok) return;
+    clearDayEntries();
+    renderHistory();
+  });
+}
+
 /* ===== CSV parser (robust) ===== */
 function splitLine(line) {
   const seps = [",", "\t", ";"];
   let bestSep = ",";
   let bestCount = -1;
+
   for (const s of seps) {
     const c = line.split(s).length - 1;
     if (c > bestCount) {
@@ -88,7 +186,6 @@ function splitLine(line) {
     const ch = line[i];
 
     if (ch === '"') {
-      // 連続ダブルクォート "" はエスケープとして扱う
       if (inQ && line[i + 1] === '"') {
         cur += '"';
         i++;
@@ -185,7 +282,7 @@ function parseNumberSafe(x) {
 
 function normalizeDate(s) {
   if (!s) return "";
-  let t = String(s).trim().replaceAll("/", "-");
+  const t = String(s).trim().replaceAll("/", "-");
   const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (m) {
     const yyyy = m[1];
@@ -217,7 +314,7 @@ function parseCsvText(csvText) {
     mappedHeader = rawHeader.map(mapHeaderKey);
     dataLines = lines.slice(1);
   } else {
-    const defaultHeader = [
+    mappedHeader = [
       "date",
       "steps",
       "dist_km",
@@ -232,11 +329,11 @@ function parseCsvText(csvText) {
       "surface_treadmill_pct",
       "surface_track_pct",
     ];
-    mappedHeader = defaultHeader;
     dataLines = lines;
   }
 
   const days = [];
+
   for (const line of dataLines) {
     const cells = splitLine(line);
     const obj = {};
@@ -278,13 +375,162 @@ document.getElementById("form")?.addEventListener("input", () => {
   saveDraft(readForm());
 });
 
+bindHistoryActions();
+renderHistory();
+
 /* ===== navigation ===== */
 document.getElementById("btnBack")?.addEventListener("click", () => {
   location.href = "./start.html";
 });
 
-/* ===== 1日入力→N日複製で計算 ===== */
+/* ===== 単日入力：履歴に追加して計算 ===== */
 document.getElementById("btnCalc")?.addEventListener("click", () => {
+  const baseDay = readForm();
+  const v = validateDayInput(baseDay);
+
+  if (!v.ok) {
+    showErrors(v.errors);
+    showWarnings(v.warnings ?? []);
+    return;
+  }
+
+  showErrors([]);
+  showWarnings(v.warnings ?? []);
+
+  const allDays = upsertDayEntry(baseDay);
+  renderHistory();
+
+  saveConfig(cfg);
+  const results = runModel(allDays, cfg);
+  saveResults(results);
+  location.href = "./output.html";
+});
+
+/* ===== 保存済み履歴で計算 ===== */
+document.getElementById("btnCalcHistory")?.addEventListener("click", () => {
+  const days = loadDayEntries();
+
+  if (!days.length) {
+    showErrors(["保存済み履歴がありません"]);
+    showWarnings([]);
+    return;
+  }
+
+  const v = validateDays(days);
+  if (!v.ok) {
+    showErrors(v.errors);
+    showWarnings(v.warnings ?? []);
+    return;
+  }
+
+  showErrors([]);
+  showWarnings(v.warnings ?? []);
+
+  saveConfig(cfg);
+  const results = runModel(days, cfg);
+  saveResults(results);
+  location.href = "./output.html";
+});
+
+/* ===== CSV読み込み：履歴に追加し、フォームへ先頭行反映 ===== */
+document.getElementById("btnLoadCsv")?.addEventListener("click", () => {
+  const text = document.getElementById("csvText")?.value || "";
+  const days = parseCsvText(text);
+
+  if (!days.length) {
+    showErrors(["CSVが空です"]);
+    showWarnings([]);
+    return;
+  }
+
+  const v = validateDays(days);
+  if (!v.ok) {
+    showErrors(v.errors);
+    showWarnings(v.warnings ?? []);
+    return;
+  }
+
+  showErrors([]);
+  showWarnings(v.warnings ?? []);
+
+  const mergedDays = upsertDayEntries(days);
+  renderHistory();
+
+  writeForm(days[0]);
+  saveDraft(days[0]);
+
+  alert(
+    `CSV ${days.length}日分を履歴に追加しました（保存済み履歴: ${mergedDays.length}日分）`
+  );
+});
+
+/* ===== CSV読み込み：履歴に追加して履歴全体で計算 ===== */
+document.getElementById("btnCalcFromCsv")?.addEventListener("click", () => {
+  const text = document.getElementById("csvText")?.value || "";
+  const days = parseCsvText(text);
+
+  if (!days.length) {
+    showErrors(["CSVが空です"]);
+    showWarnings([]);
+    return;
+  }
+
+  const v = validateDays(days);
+  if (!v.ok) {
+    showErrors(v.errors);
+    showWarnings(v.warnings ?? []);
+    return;
+  }
+
+  showErrors([]);
+  showWarnings(v.warnings ?? []);
+
+  const mergedDays = upsertDayEntries(days);
+  renderHistory();
+
+  saveConfig(cfg);
+  const results = runModel(mergedDays, cfg);
+  saveResults(results);
+  location.href = "./output.html";
+});
+
+/* ===== CSVで履歴を置き換え ===== */
+document.getElementById("btnReplaceFromCsv")?.addEventListener("click", () => {
+  const text = document.getElementById("csvText")?.value || "";
+  const days = parseCsvText(text);
+
+  if (!days.length) {
+    showErrors(["CSVが空です"]);
+    showWarnings([]);
+    return;
+  }
+
+  const v = validateDays(days);
+  if (!v.ok) {
+    showErrors(v.errors);
+    showWarnings(v.warnings ?? []);
+    return;
+  }
+
+  const ok = confirm("現在の履歴を削除し、CSVの内容で置き換えますか？");
+  if (!ok) return;
+
+  showErrors([]);
+  showWarnings(v.warnings ?? []);
+
+  const replacedDays = replaceDayEntries(days);
+  renderHistory();
+
+  if (replacedDays.length > 0) {
+    writeForm(replacedDays[0]);
+    saveDraft(replacedDays[0]);
+  }
+
+  alert(`CSV ${replacedDays.length}日分で履歴を置き換えました`);
+});
+
+/* ===== 検証用：1日入力をN日複製して試算 ===== */
+document.getElementById("btnCalcSim")?.addEventListener("click", () => {
   const baseDay = readForm();
   const v = validateDayInput(baseDay);
 
@@ -306,55 +552,7 @@ document.getElementById("btnCalc")?.addEventListener("click", () => {
   location.href = "./output.html";
 });
 
-/* ===== CSV読み込み→フォームに反映（先頭行） ===== */
-document.getElementById("btnLoadCsv")?.addEventListener("click", () => {
-  const text = document.getElementById("csvText")?.value || "";
-  const days = parseCsvText(text);
-
-  if (!days.length) {
-    showErrors(["CSVが空です"]);
-    showWarnings([]);
-    return;
-  }
-
-  const v = validateDays(days);
-  if (!v.ok) {
-    showErrors(v.errors);
-    showWarnings(v.warnings ?? []);
-    return;
-  }
-
-  showErrors([]);
-  showWarnings(v.warnings ?? []);
-
-  writeForm(days[0]);
-  saveDraft(days[0]);
-  alert(`CSV ${days.length}日分を読み込みました（フォームには先頭1日を反映）`);
-});
-
-/* ===== CSVで計算 ===== */
-document.getElementById("btnCalcFromCsv")?.addEventListener("click", () => {
-  const text = document.getElementById("csvText")?.value || "";
-  const days = parseCsvText(text);
-
-  if (!days.length) {
-    showErrors(["CSVが空です"]);
-    showWarnings([]);
-    return;
-  }
-
-  const v = validateDays(days);
-  if (!v.ok) {
-    showErrors(v.errors);
-    showWarnings(v.warnings ?? []);
-    return;
-  }
-
-  showErrors([]);
-  showWarnings(v.warnings ?? []);
-
-  saveConfig(cfg);
-  const results = runModel(days, cfg);
-  saveResults(results);
-  location.href = "./output.html";
-});
+/* ===== debug helpers ===== */
+window.__dayEntries = () => loadDayEntries();
+window.__expandDays = expandDays;
+window.__renderHistory = () => renderHistory();

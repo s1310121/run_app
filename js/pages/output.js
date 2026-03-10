@@ -55,6 +55,45 @@ function renderTableKV(obj) {
   return `<table class="kv"><tbody>${rows}</tbody></table>`;
 }
 
+function getWarnLabel(r) {
+  if (r?.global?.warn === null) return "—";
+  return r.global.warn ? "警告あり" : "正常";
+}
+
+function getStdReadyLabel(r) {
+  return r?.meta?.standardizationReady ? "有効" : "未成立";
+}
+
+function getPartStateLabel(S, theta) {
+  if (!Number.isFinite(S)) return "—";
+  if (S >= theta) return "警告";
+  if (S > 0) return "急増";
+  if (S < 0) return "回復";
+  return "平常";
+}
+
+function getPartRankRows(r) {
+  if (!r?.meta?.standardizationReady) return [];
+  return BODY_PARTS
+    .map((k) => ({
+      part: k,
+      S: safeNum(r.parts?.[k]?.S),
+      R: safeNum(r.parts?.[k]?.R),
+      w: safeNum(r.parts?.[k]?.w),
+      L: safeNum(r.parts?.[k]?.L),
+      z: safeNum(r.parts?.[k]?.z),
+      m_eff: safeNum(r.parts?.[k]?.m_eff),
+      L_ext: safeNum(r.parts?.[k]?.L_ext),
+      L_bar_lag: safeNum(r.parts?.[k]?.L_bar_lag),
+      L_tilde: safeNum(r.parts?.[k]?.L_tilde),
+      A: safeNum(r.parts?.[k]?.A),
+      C: safeNum(r.parts?.[k]?.C),
+    }))
+    .filter((x) => Number.isFinite(x.S))
+    .sort((a, b) => b.S - a.S)
+    .map((x, idx) => ({ ...x, rank: idx + 1 }));
+}
+
 function renderDerived(r) {
   const d = r.derived;
   return renderTableKV({
@@ -112,8 +151,22 @@ function renderStdInfo(r) {
 }
 
 function renderPartsTable(r, showDetail) {
+  const theta = thetaOf(r);
+  const rankedRows = getPartRankRows(r);
+  const rankedMap = new Map(rankedRows.map((x) => [x.part, x]));
+
   const colsBasic = [
+    ["順位", (k) => {
+      const row = rankedMap.get(k);
+      return row ? row.rank : "—";
+    }],
     ["部位", (k) => k],
+    ["状態", (k) => {
+      const S = safeNum(r.parts?.[k]?.S);
+      return getPartStateLabel(S, theta);
+    }],
+    ["S", (k) => fmt(r.parts[k].S, 6)],
+    ["R", (k) => fmt(r.parts[k].R, 6)],
     ["z", (k) => fmt(r.parts[k].z, 6)],
     ["w", (k) => fmt(r.parts[k].w, 6)],
     ["L_ext", (k) => fmt(r.parts[k].L_ext, 4)],
@@ -121,17 +174,19 @@ function renderPartsTable(r, showDetail) {
     ["L", (k) => fmt(r.parts[k].L, 4)],
     ["L_bar_lag", (k) => fmt(r.parts[k].L_bar_lag, 4)],
     ["L_tilde", (k) => fmt(r.parts[k].L_tilde, 6)],
-    ["S", (k) => fmt(r.parts[k].S, 6)],
   ];
+
   const colsDetail = [
     ["A", (k) => fmt(r.parts[k].A, 6)],
     ["C", (k) => fmt(r.parts[k].C, 6)],
-    ["R", (k) => fmt(r.parts[k].R, 6)],
   ];
-  const cols = showDetail ? colsBasic.concat(colsDetail) : colsBasic;
 
+  const cols = showDetail ? colsBasic.concat(colsDetail) : colsBasic;
   const thead = `<tr>${cols.map((c) => `<th>${escapeHtml(c[0])}</th>`).join("")}</tr>`;
-  const tbody = BODY_PARTS.map((k) => {
+
+  const sourceRows = r.meta.standardizationReady ? rankedRows.map((x) => x.part) : BODY_PARTS;
+
+  const tbody = sourceRows.map((k) => {
     return `<tr>${cols.map((c) => `<td>${escapeHtml(String(c[1](k)))}</td>`).join("")}</tr>`;
   }).join("");
 
@@ -147,7 +202,7 @@ function renderChecks(r) {
   const upDown = Number(r.input.up_pct ?? 0) + Number(r.input.down_pct ?? 0);
   document.getElementById("chkSlopeSum").textContent = `${fmt(upDown, 3)}%`;
 
-  document.getElementById("chkStdReady").textContent = fmtBool(r.meta.standardizationReady);
+  document.getElementById("chkStdReady").textContent = getStdReadyLabel(r);
 
   document.getElementById("chkSumW").textContent =
     `${fmt(c.sumW, 9)} (${fmtBool(Math.abs(c.sumW - 1) < 1e-6)})`;
@@ -186,10 +241,23 @@ function renderSummary(r) {
   document.getElementById("cardMaxPart").textContent =
     r.meta.standardizationReady ? (r.global.maxPart ?? "—") : "—";
 
-  document.getElementById("cardWarn").textContent =
-    r.global.warn === null ? "—" : (r.global.warn ? "WARN" : "OK");
-
+  document.getElementById("cardWarn").textContent = getWarnLabel(r);
   document.getElementById("thetaValue").textContent = fmt(thetaOf(r), 6);
+
+  const maxPartClone = document.getElementById("cardMaxPartClone");
+  const warnClone = document.getElementById("cardWarnClone");
+  const stdReadyClone = document.getElementById("chkStdReadyClone");
+
+  if (maxPartClone) {
+    maxPartClone.textContent =
+      r.meta.standardizationReady ? (r.global.maxPart ?? "—") : "—";
+  }
+  if (warnClone) {
+    warnClone.textContent = getWarnLabel(r);
+  }
+  if (stdReadyClone) {
+    stdReadyClone.textContent = getStdReadyLabel(r);
+  }
 }
 
 /* ★当日スパイク上位3 */
@@ -374,6 +442,7 @@ function drawLineChart(canvasId, labels, seriesList, referenceLines = []) {
 
   ctx.strokeStyle = COLOR.axis;
   ctx.lineWidth = 1;
+  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(x0, y0);
   ctx.lineTo(x0, y1);
@@ -404,10 +473,12 @@ function drawLineChart(canvasId, labels, seriesList, referenceLines = []) {
     const yy = yAt(rl.y);
     ctx.strokeStyle = rl.color ?? COLOR.spike.thetaLine;
     ctx.lineWidth = 1;
+    ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(x0, yy);
     ctx.lineTo(x1, yy);
     ctx.stroke();
+    ctx.setLineDash([]);
     if (rl.label) {
       ctx.fillStyle = COLOR.muted;
       ctx.fillText(rl.label, x1 - 60, yy - 4);
@@ -418,6 +489,7 @@ function drawLineChart(canvasId, labels, seriesList, referenceLines = []) {
     const col = s.color ?? COLOR.text;
     ctx.strokeStyle = col;
     ctx.lineWidth = 2;
+    ctx.setLineDash([]);
     ctx.beginPath();
     let started = false;
     for (let i = 0; i < n; i++) {
@@ -647,6 +719,7 @@ function csvEscape(x) {
 function buildResultsCSV(resultsArr) {
   const header = [
     "date", "part",
+    "rank", "state",
     "z", "w", "L_ext", "m_eff", "L", "L_bar_lag", "L_tilde", "A", "C", "R", "S",
     "L_ext_total", "L_int",
     "term_speed", "term_slope", "term_surface",
@@ -655,12 +728,19 @@ function buildResultsCSV(resultsArr) {
   const lines = [header.join(",")];
 
   for (const r of resultsArr) {
+    const theta = thetaOf(r);
+    const ranks = getPartRankRows(r);
+    const rankMap = new Map(ranks.map((x) => [x.part, x.rank]));
+
     for (const part of BODY_PARTS) {
       const p = r.parts[part];
       const e = r.total?.ext_terms ?? {};
+      const S = safeNum(p.S);
       const row = [
         r.date,
         part,
+        rankMap.get(part) ?? "",
+        getPartStateLabel(S, theta),
         p.z, p.w, p.L_ext, p.m_eff, p.L, p.L_bar_lag, p.L_tilde, p.A, p.C, p.R, p.S,
         r.total?.L_ext_total ?? null,
         r.total?.L_int ?? null,
@@ -798,9 +878,7 @@ function updateBodyView(r) {
   const rows = BODY_PARTS.map((k) => {
     const S = r.parts?.[k]?.S;
     const R = r.parts?.[k]?.R;
-    const tag = !Number.isFinite(S)
-      ? "—"
-      : (S >= theta ? "WARN" : (S > 0 ? "UP" : (S < 0 ? "DOWN" : "OK")));
+    const tag = getPartStateLabel(S, theta);
     const sText = Number.isFinite(S) ? ((S >= 0 ? "+" : "") + Number(S).toFixed(3)) : "—";
     const rText = Number.isFinite(R) ? Number(R).toFixed(3) : "—";
     return `<tr>
