@@ -35,6 +35,7 @@
       margin: 0 0 12px;
       color: #555;
       font-size: 14px;
+      line-height: 1.7;
     }
 
     .action-row {
@@ -68,6 +69,15 @@
     .summary-value {
       font-size: 24px;
       font-weight: 700;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .summary-sub {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
     }
 
     .chart-grid {
@@ -88,6 +98,7 @@
 
     .chart-card .muted {
       margin-top: 6px;
+      line-height: 1.7;
     }
 
     .result-box {
@@ -106,6 +117,99 @@
       border: 1px solid #e7eaf4;
       color: #444;
       font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .insight-box {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #f7fbff;
+      border: 1px solid #dbeafe;
+      color: #1f2937;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    .analysis-points {
+      margin-top: 10px;
+      padding-left: 18px;
+      color: #444;
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .analysis-points li + li {
+      margin-top: 4px;
+    }
+
+    .mini-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #eef2ff;
+      color: #334155;
+      border: 1px solid #dbe3ff;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .canvas-wrap {
+      overflow-x: auto;
+    }
+
+    .legend-note {
+      font-size: 12px;
+      color: #666;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+
+    .table-note {
+      margin-top: 10px;
+      color: #666;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .strong-row {
+      background: #fff9e8;
+    }
+
+    .strong-row td {
+      font-weight: 600;
+    }
+
+    .inline-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: #f3f4f6;
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .baseline-box {
+      margin-top: 12px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: #fffdf5;
+      border: 1px solid #f4e7b5;
+      color: #5b4b00;
+      line-height: 1.8;
+    }
+
+    .baseline-title {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .baseline-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
@@ -122,6 +226,8 @@
       <h2>概要</h2>
       <p class="section-lead">
         保存済みの入力データを用いて、指定したパラメータ範囲で再計算を行い、出力指標の変化を比較します。
+        この画面では、<strong>横軸に選んだ1つのパラメータだけを動かし、他のパラメータは基準設定に固定</strong>した状態で、
+        感度を読みやすく表示します。
       </p>
 
       <div class="note-box">
@@ -129,6 +235,12 @@
         最終日の G / maxS、期間内ピーク maxS（ピーク日・部位）、θ超過回数、peakMaxM_eff、
         および主要部位間の差分指標。
       </div>
+
+      <ul class="analysis-points">
+        <li><strong>最終日の G</strong> は、全身指標として大きく崩れないかを確認します。</li>
+        <li><strong>期間内ピーク maxS</strong> や <strong>θ超過回数</strong> は、スパイク検出感度を確認する主指標です。</li>
+        <li><strong>peakMaxM_eff</strong> は、局所負荷ピークがどの程度変わるかを見るのに向いています。</li>
+      </ul>
 
       <p class="muted" style="margin-top:10px;">
         新9部位モデルでは、環境因子の影響は主として外的負荷分配側に集約し、
@@ -179,6 +291,16 @@
         </label>
       </div>
 
+      <div class="note-box">
+        感度グラフでは、選択した横軸パラメータ以外は基準設定に固定して解釈します。
+        したがって、<strong>分析したいパラメータ以外は単一値にしておく方が結果を読みやすくできます。</strong>
+      </div>
+
+      <div class="baseline-box">
+        <div class="baseline-title">現在の1変数感度の基準設定</div>
+        <div class="baseline-code" id="currentBaselineView">まだ基準設定がありません。</div>
+      </div>
+
       <div class="action-row">
         <button id="btnRun" type="button" class="primary">感度分析を実行してCSV保存</button>
         <span id="status" class="muted"></span>
@@ -190,25 +312,48 @@
     <section class="section-card">
       <h2>実行結果の概要</h2>
       <p class="section-lead">
-        感度分析の実行後に、試行数や対象指標の概要を表示します。
+        感度分析の実行後に、比較対象指標の変動幅、基準値との差、相対変動率、傾向を表示します。
       </p>
 
       <div class="summary-grid">
         <article class="summary-card">
-          <h3>試行数</h3>
+          <h3>グラフ対象ケース数</h3>
           <div id="summaryCaseCount" class="summary-value">-</div>
+          <div class="summary-sub">横軸パラメータ以外を基準固定したケース数</div>
         </article>
 
         <article class="summary-card">
           <h3>比較対象指標</h3>
           <div id="summaryMetric" class="summary-value">-</div>
+          <div id="summaryMetricSub" class="summary-sub">-</div>
         </article>
 
         <article class="summary-card">
           <h3>変動幅</h3>
           <div id="summaryRange" class="summary-value">-</div>
+          <div id="summaryRangeSub" class="summary-sub">-</div>
+        </article>
+
+        <article class="summary-card">
+          <h3>基準値</h3>
+          <div id="summaryBaseline" class="summary-value">-</div>
+          <div id="summaryBaselineSub" class="summary-sub">現在の基準ケースに対応する値</div>
+        </article>
+
+        <article class="summary-card">
+          <h3>相対変動幅</h3>
+          <div id="summaryRelative" class="summary-value">-</div>
+          <div id="summaryRelativeSub" class="summary-sub">基準値に対する相対的な変動率</div>
+        </article>
+
+        <article class="summary-card">
+          <h3>傾向</h3>
+          <div id="summaryTrend" class="summary-value">-</div>
+          <div id="summaryTrendSub" class="summary-sub">単調増加 / 単調減少 / 非単調 / ほぼ一定</div>
         </article>
       </div>
+
+      <div id="sensitivityInsight" class="insight-box">まだ結果がありません。</div>
     </section>
 
     <section class="section-card">
@@ -241,23 +386,32 @@
             <option value="betaScale">betaScale</option>
           </select>
         </label>
+
+        <span class="mini-badge">1変数感度表示</span>
       </div>
 
       <div class="chart-grid result-box">
         <div class="chart-card">
           <h3 class="sub">感度分析結果の折れ線グラフ</h3>
-          <canvas id="chartSensitivityLine" width="900" height="320"></canvas>
+          <div class="canvas-wrap">
+            <canvas id="chartSensitivityLine" width="900" height="320"></canvas>
+          </div>
           <div class="muted">
-            横軸にパラメータ値、縦軸に選択した出力指標を表示します。
+            横軸に選択パラメータ、縦軸に選択した出力指標を表示します。
+            他のパラメータは現在の基準設定に固定しています。
           </div>
         </div>
 
         <div class="chart-card">
           <h3 class="sub">基準値との差分</h3>
-          <canvas id="chartSensitivityBar" width="900" height="320"></canvas>
-          <div class="muted">
-            基準ケースとの差分を棒グラフで表示します。
+          <div class="canvas-wrap">
+            <canvas id="chartSensitivityBar" width="900" height="320"></canvas>
           </div>
+          <div class="muted">
+            現在の基準ケースとの差分を棒グラフで表示します。
+            正の差分は青、負の差分は赤で表示します。
+          </div>
+          <div id="baselineInfo" class="legend-note">基準ケース: -</div>
         </div>
       </div>
     </section>
@@ -268,6 +422,9 @@
         各パラメータ組合せの計算結果を表で確認できます。
       </p>
       <div id="resultTable"></div>
+      <div class="table-note">
+        一覧表では全組合せを表示します。基準ケースは薄い黄色で強調表示されます。
+      </div>
     </section>
   </main>
 
