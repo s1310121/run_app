@@ -45,6 +45,48 @@ function safeNum(x) {
   return Number.isFinite(n) ? n : null;
 }
 
+/* ===== 部位選択 ===== */
+function getSelectedParts() {
+  const toggles = Array.from(document.querySelectorAll(".part-toggle"));
+  if (!toggles.length) {
+    return [...BODY_PARTS];
+  }
+  return toggles.filter((el) => el.checked).map((el) => el.value);
+}
+
+function setSelectedParts(parts) {
+  const set = new Set(parts);
+  document.querySelectorAll(".part-toggle").forEach((el) => {
+    el.checked = set.has(el.value);
+  });
+}
+
+function bindPartSelectorActions() {
+  document.querySelectorAll(".part-toggle").forEach((el) => {
+    el.addEventListener("change", renderCharts);
+  });
+
+  document.getElementById("btnPartsAll")?.addEventListener("click", () => {
+    setSelectedParts(BODY_PARTS);
+    renderCharts();
+  });
+
+  document.getElementById("btnPartsNone")?.addEventListener("click", () => {
+    setSelectedParts([]);
+    renderCharts();
+  });
+
+  document.getElementById("btnPartsLower")?.addEventListener("click", () => {
+    setSelectedParts(["大腿", "膝", "前下腿", "後下腿"]);
+    renderCharts();
+  });
+
+  document.getElementById("btnPartsFoot")?.addEventListener("click", () => {
+    setSelectedParts(["アキレス腱", "足底部", "足関節・足背部"]);
+    renderCharts();
+  });
+}
+
 function renderTableKV(obj) {
   const rows = Object.entries(obj)
     .map(
@@ -184,11 +226,17 @@ function renderPartsTable(r, showDetail) {
   const cols = showDetail ? colsBasic.concat(colsDetail) : colsBasic;
   const thead = `<tr>${cols.map((c) => `<th>${escapeHtml(c[0])}</th>`).join("")}</tr>`;
 
-  const sourceRows = r.meta.standardizationReady ? rankedRows.map((x) => x.part) : BODY_PARTS;
+  const sourceRows = r.meta.standardizationReady
+    ? rankedRows.map((x) => x.part)
+    : BODY_PARTS;
 
-  const tbody = sourceRows.map((k) => {
-    return `<tr>${cols.map((c) => `<td>${escapeHtml(String(c[1](k)))}</td>`).join("")}</tr>`;
-  }).join("");
+  const tbody = sourceRows
+    .map((k) => {
+      return `<tr>${cols
+        .map((c) => `<td>${escapeHtml(String(c[1](k)))}</td>`)
+        .join("")}</tr>`;
+    })
+    .join("");
 
   return `<table class="grid"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
@@ -431,7 +479,10 @@ function drawLineChart(canvasId, labels, seriesList, referenceLines = []) {
 
   let ymin = Math.min(...allVals);
   let ymax = Math.max(...allVals);
-  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  if (ymin === ymax) {
+    ymin -= 1;
+    ymax += 1;
+  }
 
   const padL = 40, padR = 10, padT = 10, padB = 30;
   const x0 = padL, x1 = W - padR, y0 = padT, y1 = H - padB;
@@ -494,10 +545,18 @@ function drawLineChart(canvasId, labels, seriesList, referenceLines = []) {
     let started = false;
     for (let i = 0; i < n; i++) {
       const v = s.values[i];
-      if (v === null || !Number.isFinite(v)) { started = false; continue; }
-      const x = xAt(i), y = yAt(v);
-      if (!started) { ctx.moveTo(x, y); started = true; }
-      else ctx.lineTo(x, y);
+      if (v === null || !Number.isFinite(v)) {
+        started = false;
+        continue;
+      }
+      const x = xAt(i);
+      const y = yAt(v);
+      if (!started) {
+        ctx.moveTo(x, y);
+        started = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
     ctx.stroke();
 
@@ -513,6 +572,13 @@ function drawMultiPartsChart(canvasId, labels, partsSeries, theta) {
 
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
+
+  if (Object.keys(partsSeries).length === 0) {
+    ctx.fillStyle = COLOR.muted;
+    ctx.font = "12px system-ui";
+    ctx.fillText("（表示する部位を選択してください）", 10, 20);
+    return;
+  }
 
   const allVals = [];
   for (const k of Object.keys(partsSeries)) {
@@ -681,7 +747,16 @@ function renderCharts() {
     [{ y: theta, label: "θ", color: COLOR.spike.thetaLine }]
   );
 
-  drawMultiPartsChart("chartPartsS", labels, partsS, theta);
+  const selectedParts = getSelectedParts();
+  const filteredPartsS = {};
+
+  for (const k of selectedParts) {
+    if (partsS[k]) {
+      filteredPartsS[k] = partsS[k];
+    }
+  }
+
+  drawMultiPartsChart("chartPartsS", labels, filteredPartsS, theta);
 }
 
 /* ===== JSON export ===== */
@@ -1117,5 +1192,6 @@ document.addEventListener("keydown", (e) => {
 
 /* initial render */
 initBodyLegend();
+bindPartSelectorActions();
 renderAll();
 renderCharts();
