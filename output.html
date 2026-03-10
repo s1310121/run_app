@@ -235,6 +235,33 @@
     .feedback-block li + li {
       margin-top:4px;
     }
+
+    .part-selector {
+      margin: 10px 0 12px;
+      padding: 10px 12px;
+      border: 1px solid #eceef5;
+      border-radius: 12px;
+      background: #fafbfe;
+    }
+
+    .part-selector-title {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .part-selector .action-row + .action-row {
+      margin-top: 8px;
+    }
+
+    .part-selector label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 0;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -369,6 +396,30 @@
 
         <div class="chart-card">
           <h3 class="sub">部位別スパイク指標 S_k(t)</h3>
+
+          <div class="part-selector">
+            <div class="part-selector-title">表示部位</div>
+
+            <div class="action-row" id="partSelectorBlock">
+              <label><input type="checkbox" class="part-toggle" value="腰骨盤部" checked />腰骨盤部</label>
+              <label><input type="checkbox" class="part-toggle" value="股関節殿部" checked />股関節殿部</label>
+              <label><input type="checkbox" class="part-toggle" value="大腿" checked />大腿</label>
+              <label><input type="checkbox" class="part-toggle" value="膝" checked />膝</label>
+              <label><input type="checkbox" class="part-toggle" value="前下腿" checked />前下腿</label>
+              <label><input type="checkbox" class="part-toggle" value="後下腿" checked />後下腿</label>
+              <label><input type="checkbox" class="part-toggle" value="アキレス腱" checked />アキレス腱</label>
+              <label><input type="checkbox" class="part-toggle" value="足底部" checked />足底部</label>
+              <label><input type="checkbox" class="part-toggle" value="足関節・足背部" checked />足関節・足背部</label>
+            </div>
+
+            <div class="action-row">
+              <button id="btnPartsAll" type="button">全選択</button>
+              <button id="btnPartsNone" type="button">全解除</button>
+              <button id="btnPartsLower" type="button">下肢中心</button>
+              <button id="btnPartsFoot" type="button">足部中心</button>
+            </div>
+          </div>
+
           <canvas id="chartPartsS" width="900" height="340"></canvas>
           <div class="muted">S=0 は平常、S&gt;0 は急増、S&lt;0 は回復を示します。</div>
         </div>
