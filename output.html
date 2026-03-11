@@ -114,19 +114,6 @@
       font-size:13px;
     }
 
-    .output-main-grid {
-      display:grid;
-      grid-template-columns:1.1fr 0.9fr;
-      gap:16px;
-      margin:16px 0;
-    }
-
-    @media (max-width: 900px) {
-      .output-main-grid {
-        grid-template-columns:1fr;
-      }
-    }
-
     .section-card {
       background:#fff;
       border:1px solid #e9ebf2;
@@ -143,11 +130,14 @@
       margin:0 0 12px;
       color:#555;
       font-size:14px;
+      line-height:1.7;
     }
 
     .quick-info {
       display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
       gap:10px;
+      margin:14px 0 16px;
     }
 
     .quick-info-box {
@@ -262,6 +252,63 @@
       padding: 4px 0;
       font-size: 14px;
     }
+
+    .feedback-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .feedback-part-card {
+      border: 1px solid #e9ebf2;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fafbfe;
+    }
+
+    .feedback-part-card h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .feedback-part-card label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .feedback-part-card input,
+    .feedback-part-card select {
+      width: 72px;
+    }
+
+    .soft-note {
+      border: 1px solid #eceef5;
+      border-radius: 12px;
+      background: #fafbfe;
+      padding: 10px 12px;
+      color: #555;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .soft-note strong {
+      color: #333;
+    }
+
+    .status-ok {
+      color: #245f2a;
+      font-weight: 600;
+    }
+
+    .status-done {
+      color: #555;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -312,37 +359,65 @@
       </article>
     </section>
 
-    <section class="output-main-grid">
-      <section class="section-card">
-        <h2>当日の結果まとめ</h2>
-        <p class="section-lead">
-          当日の負荷状態について、警告の有無や部位別の特徴を文章で確認できます。
-        </p>
-        <div id="feedbackHeadline" class="feedback-headline"></div>
-        <div id="feedbackBlocks" class="feedback-blocks"></div>
-      </section>
+    <section class="section-card">
+      <h2>当日の結果まとめ</h2>
+      <p class="section-lead">
+        当日の負荷状態について、警告の有無や部位別の特徴を文章で確認できます。
+      </p>
 
-      <section class="section-card">
-        <h2>重要ポイント</h2>
-        <p class="section-lead">
-          当日の結果のうち、最初に確認したい重要項目をまとめています。
-        </p>
-
-        <div class="quick-info">
-          <div class="quick-info-box">
-            <div class="quick-info-title">最大スパイク部位</div>
-            <div id="cardMaxPartClone" class="quick-info-value">-</div>
-          </div>
-          <div class="quick-info-box">
-            <div class="quick-info-title">警告状態</div>
-            <div id="cardWarnClone" class="quick-info-value">-</div>
-          </div>
-          <div class="quick-info-box">
-            <div class="quick-info-title">標準化状態</div>
-            <div id="chkStdReadyClone" class="quick-info-value">-</div>
-          </div>
+      <div class="quick-info">
+        <div class="quick-info-box">
+          <div class="quick-info-title">最大スパイク部位</div>
+          <div id="cardMaxPartClone" class="quick-info-value">-</div>
         </div>
-      </section>
+        <div class="quick-info-box">
+          <div class="quick-info-title">警告状態</div>
+          <div id="cardWarnClone" class="quick-info-value">-</div>
+        </div>
+        <div class="quick-info-box">
+          <div class="quick-info-title">標準化状態</div>
+          <div id="chkStdReadyClone" class="quick-info-value">-</div>
+        </div>
+      </div>
+
+      <div id="feedbackHeadline" class="feedback-headline"></div>
+      <div id="feedbackBlocks" class="feedback-blocks"></div>
+    </section>
+
+    <section class="section-card" id="userFeedbackSection">
+      <h2>利用者フィードバック</h2>
+      <p class="section-lead">
+        当日の主観的な負担感を入力・修正できます。<br />
+        モデルと体感にズレがあると感じた場合のみ、その情報を今後の個別調整に反映できます。
+      </p>
+
+      <div class="soft-note">
+        <strong>使い方</strong><br />
+        まず「フィードバックを保存」で体感を記録してください。<br />
+        「この体感を今後の調整に反映する」は、毎回行う必要はありません。<br />
+        <strong>同じようなズレが続く場合のみ</strong>使うことをおすすめします。
+      </div>
+
+      <div class="panel-header" style="margin-top:12px;">
+        <div class="action-row">
+          <label>
+            最も負担を感じた部位
+            <select id="feedbackTopPart">
+              <option value="">選択してください</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div id="feedbackPartGrid" class="feedback-form-grid"></div>
+
+      <div class="action-row" style="margin-top:12px;">
+        <button id="btnSaveFeedback" type="button">フィードバックを保存</button>
+        <button id="btnApplyAdjustment" type="button">この体感を今後の調整に反映する</button>
+        <button id="btnResetAdjustments" type="button">個別調整をリセット</button>
+      </div>
+
+      <div id="feedbackSaveStatus" class="muted" style="margin-top:8px;"></div>
     </section>
 
     <section class="section-card">
@@ -475,7 +550,6 @@
     </section>
   </main>
 
-  <!-- ===== 人体ビュー モーダル ===== -->
   <div id="bodyModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
     <div class="modal-panel" role="dialog" aria-modal="true" aria-label="人体ビュー">
@@ -533,7 +607,6 @@
     </div>
   </div>
 
-  <!-- ===== スパイク日一覧 モーダル ===== -->
   <div id="spikeModal" class="modal" aria-hidden="true">
     <div class="modal-backdrop" data-close="1"></div>
     <div class="modal-panel" role="dialog" aria-modal="true" aria-label="スパイク日一覧">

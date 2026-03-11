@@ -5,6 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./css/base.css" />
   <title>入力</title>
+  <style>
+    .feedback-form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .feedback-part-card {
+      border: 1px solid #e9ebf2;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fafbfe;
+    }
+
+    .feedback-part-card h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+
+    .feedback-part-card label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+
+    .feedback-part-card input {
+      width: 72px;
+    }
+  </style>
 </head>
 <body>
   <main class="container">
@@ -98,6 +131,25 @@
           </div>
           <div class="note-box">
             路面割合の合計は 100% になるように入力してください。
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>主観フィードバック（任意）</legend>
+
+          <div class="form-grid">
+            <label>
+              最も負担を感じた部位
+              <select id="feedback_top_part">
+                <option value="">選択してください</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="feedbackPartGrid" class="feedback-form-grid"></div>
+
+          <div class="note-box">
+            当日の体感を保存します。CSV入力のみの日付については、結果画面から後で入力・修正できます。
           </div>
         </fieldset>
 
