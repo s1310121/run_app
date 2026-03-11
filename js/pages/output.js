@@ -1,8 +1,32 @@
 import { BODY_PARTS } from "../core/constants.js";
-import { loadResults } from "../lib/storage.js";
+import {
+  loadDayEntries,
+  loadConfig,
+  saveResults,
+  loadDayFeedback,
+  upsertDayFeedback,
+  loadUserAdjustments,
+  saveUserAdjustments,
+  clearUserAdjustments,
+  isAdjustmentApplied,
+  markAdjustmentApplied,
+  clearAdjustmentAppliedDates,
+  loadAdjustmentPending,
+  upsertAdjustmentPending,
+  removeAdjustmentPending,
+  clearAdjustmentPendingByDate,
+} from "../lib/storage.js";
 import { fmt, fmtBool, escapeHtml } from "../lib/format.js";
 import { COLOR, colorForSpikeS } from "../core/colorConfig.js";
 import { buildDetailedFeedback } from "../core/feedback.js";
+import { runModel } from "../core/model.js";
+import {
+  buildEffectiveConfig,
+  applyRuleBasedAdjustment,
+  shouldAllowAdjustment,
+  buildAdjustmentSignature,
+  isRepeatedMismatch,
+} from "../core/personalization.js";
 
 const BODY_INACTIVE_COLOR = "#d9d9d9";
 
@@ -18,21 +42,42 @@ const PART_LINE_DASH = {
   "足関節・足背部": [5, 3],
 };
 
-const results = loadResults();
-if (!results || !results.length) {
-  alert("結果がありません。入力画面へ戻ります。");
+const dayEntries = loadDayEntries();
+if (!dayEntries || !dayEntries.length) {
+  alert("入力データがありません。入力画面へ戻ります。");
   location.href = "./input.html";
-  throw new Error("No results found");
+  throw new Error("No day entries found");
 }
 
+const savedConfig = loadConfig() ?? {};
+let userAdjustments = loadUserAdjustments();
+let effectiveConfig = buildEffectiveConfig(userAdjustments, savedConfig);
+let results = runModel(dayEntries, effectiveConfig);
+saveResults(results);
+
 const dateSelect = document.getElementById("dateSelect");
-results.forEach((r, idx) => {
-  const opt = document.createElement("option");
-  opt.value = String(idx);
-  opt.textContent = r.date + (r.meta.standardizationReady ? "" : " (std:No)");
-  dateSelect.appendChild(opt);
-});
-dateSelect.value = String(results.length - 1);
+
+function populateDateSelect(selectedDate = null) {
+  while (dateSelect.firstChild) {
+    dateSelect.removeChild(dateSelect.firstChild);
+  }
+
+  results.forEach((r, idx) => {
+    const opt = document.createElement("option");
+    opt.value = String(idx);
+    opt.textContent = r.date + (r.meta.standardizationReady ? "" : " (std:No)");
+    dateSelect.appendChild(opt);
+  });
+
+  if (selectedDate) {
+    const idx = results.findIndex((r) => r.date === selectedDate);
+    dateSelect.value = String(idx >= 0 ? idx : results.length - 1);
+  } else {
+    dateSelect.value = String(results.length - 1);
+  }
+}
+
+populateDateSelect();
 
 /* ========= helpers ========= */
 function thetaOf(r) {
@@ -399,6 +444,7 @@ function renderFeedback() {
   blocksEl.innerHTML = "";
 
   if (fb.overall) appendFeedbackBlock(blocksEl, fb.overall.title, fb.overall.body);
+  if (fb.userFeedback) appendFeedbackBlock(blocksEl, fb.userFeedback.title, fb.userFeedback.lines);
   if (fb.trend) appendFeedbackBlock(blocksEl, fb.trend.title, fb.trend.body);
   if (fb.external) appendFeedbackBlock(blocksEl, fb.external.title, fb.external.body);
   if (fb.internal) appendFeedbackBlock(blocksEl, fb.internal.title, fb.internal.body);
@@ -766,7 +812,7 @@ document.getElementById("btnCopyJson").addEventListener("click", async () => {
   try {
     await navigator.clipboard.writeText(json);
     alert("JSONをコピーしました");
-  } catch (err) {
+  } catch {
     alert("JSONコピーに失敗しました。JSON保存を使用してください。");
   }
 });
@@ -1172,11 +1218,247 @@ btnDownloadSpikeCSV?.addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 
+/* ===== 利用者フィードバック ===== */
+function getSelectedResult() {
+  return results[Number(dateSelect.value)];
+}
+
+function getTopModelParts(r, n = 3) {
+  if (!r?.meta?.standardizationReady) return [];
+  return BODY_PARTS
+    .map((part) => ({ part, S: safeNum(r.parts?.[part]?.S) }))
+    .filter((x) => Number.isFinite(x.S))
+    .sort((a, b) => b.S - a.S)
+    .slice(0, n)
+    .map((x) => x.part);
+}
+
+function initUserFeedbackForm() {
+  const topSel = document.getElementById("feedbackTopPart");
+  const grid = document.getElementById("feedbackPartGrid");
+
+  if (topSel) {
+    topSel.innerHTML =
+      `<option value="">選択してください</option>` +
+      BODY_PARTS.map((p) => `<option value="${p}">${p}</option>`).join("");
+  }
+
+  if (grid) {
+    grid.innerHTML = BODY_PARTS.map((part) => `
+      <div class="feedback-part-card">
+        <h3>${escapeHtml(part)}</h3>
+        <label>
+          疲労感
+          <input id="fatigue_${part}" type="number" min="0" max="10" step="1" value="0" />
+        </label>
+        <label>
+          違和感
+          <input id="discomfort_${part}" type="number" min="0" max="10" step="1" value="0" />
+        </label>
+      </div>
+    `).join("");
+  }
+}
+
+function readUserFeedbackForm() {
+  const fatigue = {};
+  const discomfort = {};
+
+  for (const part of BODY_PARTS) {
+    fatigue[part] = Number(document.getElementById(`fatigue_${part}`)?.value ?? 0);
+    discomfort[part] = Number(document.getElementById(`discomfort_${part}`)?.value ?? 0);
+  }
+
+  return {
+    topPart: document.getElementById("feedbackTopPart")?.value ?? "",
+    fatigue,
+    discomfort,
+  };
+}
+
+function writeUserFeedbackForm(feedback) {
+  const topSel = document.getElementById("feedbackTopPart");
+  if (topSel) topSel.value = feedback?.topPart ?? "";
+
+  for (const part of BODY_PARTS) {
+    const f = document.getElementById(`fatigue_${part}`);
+    const d = document.getElementById(`discomfort_${part}`);
+    if (f) f.value = feedback?.fatigue?.[part] ?? 0;
+    if (d) d.value = feedback?.discomfort?.[part] ?? 0;
+  }
+}
+
+function setFeedbackStatus(text = "", kind = "") {
+  const status = document.getElementById("feedbackSaveStatus");
+  if (!status) return;
+  status.textContent = text;
+  status.className = "muted";
+  if (kind === "ok") status.classList.add("status-ok");
+  if (kind === "done") status.classList.add("status-done");
+}
+
+function updateAdjustmentButtonState() {
+  const r = getSelectedResult();
+  const btn = document.getElementById("btnApplyAdjustment");
+  if (!btn || !r) return;
+
+  const alreadyApplied = isAdjustmentApplied(r.date);
+  btn.disabled = alreadyApplied;
+}
+
+function fillUserFeedbackForSelectedDate() {
+  const r = getSelectedResult();
+  if (!r) return;
+
+  const saved = loadDayFeedback(r.date);
+
+  if (saved) {
+    writeUserFeedbackForm(saved);
+  } else {
+    writeUserFeedbackForm({
+      topPart: "",
+      fatigue: Object.fromEntries(BODY_PARTS.map((p) => [p, 0])),
+      discomfort: Object.fromEntries(BODY_PARTS.map((p) => [p, 0])),
+    });
+  }
+
+  if (isAdjustmentApplied(r.date)) {
+    setFeedbackStatus("この日の体感は今後の個別調整に反映済みです。", "done");
+  } else {
+    setFeedbackStatus("");
+  }
+
+  updateAdjustmentButtonState();
+}
+
+function saveFeedbackForSelectedDate() {
+  const r = getSelectedResult();
+  if (!r) return;
+
+  const feedback = readUserFeedbackForm();
+
+  upsertDayFeedback(r.date, {
+    ...feedback,
+    modelTopParts: getTopModelParts(r),
+    modelMaxPart: r.global?.maxPart ?? null,
+    modelMaxS: r.global?.maxS ?? null,
+  });
+
+  if (isAdjustmentApplied(r.date)) {
+    setFeedbackStatus("フィードバックを保存しました。この日はすでに反映済みです。", "done");
+  } else {
+    setFeedbackStatus("フィードバックを保存しました。", "ok");
+  }
+}
+
+function recomputeResultsKeepDate(targetDate) {
+  effectiveConfig = buildEffectiveConfig(userAdjustments, savedConfig);
+  results = runModel(dayEntries, effectiveConfig);
+  saveResults(results);
+  populateDateSelect(targetDate);
+}
+
+function applyAdjustmentForSelectedDate() {
+  const r = getSelectedResult();
+  if (!r) return;
+
+  if (isAdjustmentApplied(r.date)) {
+    setFeedbackStatus("この日の体感はすでに反映済みです。", "done");
+    updateAdjustmentButtonState();
+    return;
+  }
+
+  const feedback = readUserFeedbackForm();
+  const rule = shouldAllowAdjustment(feedback, 3);
+
+  if (!rule.ok) {
+    setFeedbackStatus(rule.reason, "done");
+    return;
+  }
+
+  const signature = buildAdjustmentSignature(r, feedback);
+
+  if (!signature.mismatch) {
+    setFeedbackStatus("モデルと主観の最重要部位が一致しているため、今回は反映しません。", "done");
+    removeAdjustmentPending(r.date);
+    return;
+  }
+
+  const previousDate = results[Number(dateSelect.value) - 1]?.date ?? null;
+  const previousPending = previousDate ? loadAdjustmentPending(previousDate) : null;
+
+  upsertDayFeedback(r.date, {
+    ...feedback,
+    modelTopParts: getTopModelParts(r),
+    modelMaxPart: r.global?.maxPart ?? null,
+    modelMaxS: r.global?.maxS ?? null,
+  });
+
+  if (!isRepeatedMismatch(previousPending, signature)) {
+    upsertAdjustmentPending(r.date, signature);
+    setFeedbackStatus(
+      "今回のズレを記録しました。同じようなズレが続いた場合に反映します。",
+      "done"
+    );
+    return;
+  }
+
+  const ok = confirm(
+    "同じようなズレが続いているため、今回の体感を今後の個別調整に反映します。\n" +
+    "反映しますか？"
+  );
+  if (!ok) return;
+
+  userAdjustments = applyRuleBasedAdjustment(userAdjustments, r, feedback);
+  saveUserAdjustments(userAdjustments);
+  markAdjustmentApplied(r.date);
+  removeAdjustmentPending(r.date);
+  if (previousDate) removeAdjustmentPending(previousDate);
+
+  const currentDate = r.date;
+  recomputeResultsKeepDate(currentDate);
+
+  renderAll();
+  renderCharts();
+  fillUserFeedbackForSelectedDate();
+
+  setFeedbackStatus("2回連続したズレを確認したため、この日の体感を今後の個別調整に反映しました。", "done");
+  updateAdjustmentButtonState();
+}
+
 /* ===== events ===== */
+document.getElementById("btnSaveFeedback")?.addEventListener("click", saveFeedbackForSelectedDate);
+
+document.getElementById("btnApplyAdjustment")?.addEventListener("click", applyAdjustmentForSelectedDate);
+
+document.getElementById("btnResetAdjustments")?.addEventListener("click", () => {
+  const ok = confirm(
+    "保存済みの個別調整をリセットしますか？\n" +
+    "反映済み日付と保留中のズレ記録も初期化されます。"
+  );
+  if (!ok) return;
+
+  clearUserAdjustments();
+  clearAdjustmentAppliedDates();
+  clearAdjustmentPendingByDate();
+  userAdjustments = loadUserAdjustments();
+
+  const currentDate = getSelectedResult()?.date ?? null;
+  recomputeResultsKeepDate(currentDate);
+
+  renderAll();
+  renderCharts();
+  fillUserFeedbackForSelectedDate();
+
+  setFeedbackStatus("個別調整をリセットしました。", "ok");
+});
+
 dateSelect.addEventListener("change", () => {
   renderAll();
   renderCharts();
+  fillUserFeedbackForSelectedDate();
 });
+
 document.getElementById("toggleDetailCols").addEventListener("change", renderAll);
 document.getElementById("chkOnlyReady")?.addEventListener("change", renderCharts);
 
@@ -1193,5 +1475,7 @@ document.addEventListener("keydown", (e) => {
 /* initial render */
 initBodyLegend();
 bindPartSelectorActions();
+initUserFeedbackForm();
 renderAll();
 renderCharts();
+fillUserFeedbackForSelectedDate();

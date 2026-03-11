@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG } from "../core/constants.js";
+import { BODY_PARTS, DEFAULT_CONFIG } from "../core/constants.js";
 import { expandDays, runModel } from "../core/model.js";
 import { validateDayInput, validateDays } from "../lib/validate.js";
 import {
@@ -13,6 +13,8 @@ import {
   removeDayEntry,
   clearDayEntries,
   replaceDayEntries,
+  upsertDayFeedback,
+  loadDayFeedback,
 } from "../lib/storage.js";
 
 function getVal(id) {
@@ -60,6 +62,75 @@ function writeForm(d) {
   setVal("surface_trail_pct", d.surface_trail_pct ?? 0);
   setVal("surface_treadmill_pct", d.surface_treadmill_pct ?? 0);
   setVal("surface_track_pct", d.surface_track_pct ?? 0);
+}
+
+function buildFeedbackInputs() {
+  const topSel = document.getElementById("feedback_top_part");
+  const grid = document.getElementById("feedbackPartGrid");
+
+  if (topSel) {
+    topSel.innerHTML = `<option value="">選択してください</option>` +
+      BODY_PARTS.map((p) => `<option value="${p}">${p}</option>`).join("");
+  }
+
+  if (!grid) return;
+
+  grid.innerHTML = BODY_PARTS.map((part) => `
+    <div class="feedback-part-card">
+      <h3>${part}</h3>
+      <label>
+        疲労感
+        <input id="fatigue_${part}" type="number" min="0" max="10" step="1" value="0" />
+      </label>
+      <label>
+        違和感
+        <input id="discomfort_${part}" type="number" min="0" max="10" step="1" value="0" />
+      </label>
+    </div>
+  `).join("");
+}
+
+function readFeedbackForm() {
+  const fatigue = {};
+  const discomfort = {};
+
+  for (const part of BODY_PARTS) {
+    fatigue[part] = Number(document.getElementById(`fatigue_${part}`)?.value ?? 0);
+    discomfort[part] = Number(document.getElementById(`discomfort_${part}`)?.value ?? 0);
+  }
+
+  return {
+    topPart: getVal("feedback_top_part"),
+    fatigue,
+    discomfort,
+  };
+}
+
+function writeFeedbackForm(feedback) {
+  setVal("feedback_top_part", feedback?.topPart ?? "");
+  for (const part of BODY_PARTS) {
+    setVal(`fatigue_${part}`, feedback?.fatigue?.[part] ?? 0);
+    setVal(`discomfort_${part}`, feedback?.discomfort?.[part] ?? 0);
+  }
+}
+
+function clearFeedbackForm() {
+  writeFeedbackForm({
+    topPart: "",
+    fatigue: Object.fromEntries(BODY_PARTS.map((p) => [p, 0])),
+    discomfort: Object.fromEntries(BODY_PARTS.map((p) => [p, 0])),
+  });
+}
+
+function loadFeedbackForCurrentDate() {
+  const date = getVal("date");
+  if (!date) return;
+  const fb = loadDayFeedback(date);
+  if (fb) {
+    writeFeedbackForm(fb);
+  } else {
+    clearFeedbackForm();
+  }
 }
 
 function showErrors(errors = []) {
@@ -164,7 +235,7 @@ function bindHistoryActions() {
   });
 }
 
-/* ===== CSV parser (robust) ===== */
+/* ===== CSV parser ===== */
 function splitLine(line) {
   const seps = [",", "\t", ";"];
   let bestSep = ",";
@@ -368,10 +439,20 @@ function parseCsvText(csvText) {
 const cfg = loadConfig() ?? DEFAULT_CONFIG;
 saveConfig(cfg);
 
+buildFeedbackInputs();
+
 const draft = loadDraft();
 if (draft) writeForm(draft);
 
-document.getElementById("form")?.addEventListener("input", () => {
+loadFeedbackForCurrentDate();
+
+document.getElementById("date")?.addEventListener("change", loadFeedbackForCurrentDate);
+
+document.getElementById("form")?.addEventListener("input", (e) => {
+  const target = e.target;
+  if (target?.id?.startsWith("fatigue_")) return;
+  if (target?.id?.startsWith("discomfort_")) return;
+  if (target?.id === "feedback_top_part") return;
   saveDraft(readForm());
 });
 
@@ -386,6 +467,7 @@ document.getElementById("btnBack")?.addEventListener("click", () => {
 /* ===== 単日入力：履歴に追加して計算 ===== */
 document.getElementById("btnCalc")?.addEventListener("click", () => {
   const baseDay = readForm();
+  const feedback = readFeedbackForm();
   const v = validateDayInput(baseDay);
 
   if (!v.ok) {
@@ -398,6 +480,7 @@ document.getElementById("btnCalc")?.addEventListener("click", () => {
   showWarnings(v.warnings ?? []);
 
   const allDays = upsertDayEntry(baseDay);
+  upsertDayFeedback(baseDay.date, feedback);
   renderHistory();
 
   saveConfig(cfg);
@@ -458,6 +541,7 @@ document.getElementById("btnLoadCsv")?.addEventListener("click", () => {
 
   writeForm(days[0]);
   saveDraft(days[0]);
+  loadFeedbackForCurrentDate();
 
   alert(
     `CSV ${days.length}日分を履歴に追加しました（保存済み履歴: ${mergedDays.length}日分）`
@@ -524,6 +608,7 @@ document.getElementById("btnReplaceFromCsv")?.addEventListener("click", () => {
   if (replacedDays.length > 0) {
     writeForm(replacedDays[0]);
     saveDraft(replacedDays[0]);
+    loadFeedbackForCurrentDate();
   }
 
   alert(`CSV ${replacedDays.length}日分で履歴を置き換えました`);
