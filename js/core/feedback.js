@@ -7,9 +7,15 @@ import {
   COUPLING_SOURCE_PART,
   COUPLING_TARGETS,
 } from "./constants.js";
+import { loadDayFeedback } from "../lib/storage.js";
 
 const DEFAULT_THETA = THETA;
 const DEFAULT_BODY_PARTS = BODY_PARTS;
+
+function safeNum(x) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : null;
+}
 
 function num(x, fallback = NaN) {
   return Number.isFinite(x) ? x : fallback;
@@ -25,7 +31,9 @@ function signed(x, digits = 3) {
 }
 
 function safeDiv(a, b, fallback = NaN) {
-  if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) < 1e-12) return fallback;
+  if (!Number.isFinite(a) || !Number.isFinite(b) || Math.abs(b) < 1e-12) {
+    return fallback;
+  }
   return a / b;
 }
 
@@ -109,6 +117,73 @@ function sortByInternalWeightDesc(entries) {
     .sort((a, b) => b.m_eff - a.m_eff);
 }
 
+function getTopSubjectiveParts(scoreMap = {}, n = 3) {
+  return Object.entries(scoreMap)
+    .map(([part, value]) => ({ part, value: safeNum(value) }))
+    .filter((x) => Number.isFinite(x.value) && x.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, n)
+    .map((x) => x.part);
+}
+
+function getTopModelParts(result, n = 3) {
+  if (!result?.meta?.standardizationReady) return [];
+
+  return BODY_PARTS
+    .map((part) => ({
+      part,
+      S: safeNum(result.parts?.[part]?.S),
+    }))
+    .filter((x) => Number.isFinite(x.S))
+    .sort((a, b) => b.S - a.S)
+    .slice(0, n)
+    .map((x) => x.part);
+}
+
+function joinParts(parts = []) {
+  if (!parts.length) return "なし";
+  return parts.join("、");
+}
+
+function buildUserFeedbackSummary(result) {
+  if (!result?.date) return null;
+
+  const saved = loadDayFeedback(result.date);
+  if (!saved) return null;
+
+  const topFatigue = getTopSubjectiveParts(saved.fatigue, 3);
+  const topDiscomfort = getTopSubjectiveParts(saved.discomfort, 3);
+  const topModel = getTopModelParts(result, 3);
+
+  const topPart = saved.topPart || "未入力";
+  const matched =
+    !!saved.topPart &&
+    topModel.length > 0 &&
+    topModel.includes(saved.topPart);
+
+  const lines = [
+    `主観で最も負担を感じた部位: ${topPart}`,
+    `主観的な疲労感上位: ${joinParts(topFatigue)}`,
+    `主観的な違和感上位: ${joinParts(topDiscomfort)}`,
+    `モデル上のスパイク上位: ${joinParts(topModel)}`,
+  ];
+
+  if (saved.topPart) {
+    lines.push(
+      matched
+        ? "主観上の最重要部位は、モデルの高負荷部位と概ね一致しています。"
+        : "主観上の最重要部位とモデル出力にはズレがあります。個別補正の検討対象になります。"
+    );
+  }
+
+  return {
+    title: "主観フィードバックとの比較",
+    lines,
+    matched,
+    saved,
+  };
+}
+
 export function labelForSpike(S, theta = DEFAULT_THETA) {
   if (!Number.isFinite(S)) return "評価不可";
   if (S > theta) return "WARN";
@@ -152,16 +227,32 @@ function buildHeadline(r) {
   const maxPart = r?.global?.maxPart ?? "—";
   const maxS = num(r?.global?.maxS);
   const G = num(r?.global?.G);
+  const userFb = buildUserFeedbackSummary(r);
 
   if (!stdReady) {
+    if (userFb?.saved?.topPart) {
+      return `本日は標準化に必要な履歴が未充足のため、スパイク指標の解釈は参考値です。主観上は ${userFb.saved.topPart} の負担が最も強く報告されています。`;
+    }
     return "本日は標準化に必要な履歴が未充足のため、スパイク指標の解釈は参考値です。";
   }
 
   if (r?.global?.warn) {
-    return `本日は ${maxPart} のスパイクが最大であり、maxS=${fmt(maxS)}、G=${fmt(G)} と警告閾値 θ=${fmt(theta)} を上回る急増状態です。`;
+    let text = `本日は ${maxPart} のスパイクが最大であり、maxS=${fmt(maxS)}、G=${fmt(G)} と警告閾値 θ=${fmt(theta)} を上回る急増状態です。`;
+    if (userFb?.saved?.topPart) {
+      text += userFb.matched
+        ? ` 主観上も ${userFb.saved.topPart} が最重要部位として報告されており、モデルと概ね一致しています。`
+        : ` 一方で主観上の最重要部位は ${userFb.saved.topPart} であり、モデル出力とのズレがみられます。`;
+    }
+    return text;
   }
 
-  return `本日の最大スパイク部位は ${maxPart} であり、maxS=${fmt(maxS)}、G=${fmt(G)} です。警告閾値 θ=${fmt(theta)} は上回っていません。`;
+  let text = `本日の最大スパイク部位は ${maxPart} であり、maxS=${fmt(maxS)}、G=${fmt(G)} です。警告閾値 θ=${fmt(theta)} は上回っていません。`;
+  if (userFb?.saved?.topPart) {
+    text += userFb.matched
+      ? ` 主観上の最重要部位 ${userFb.saved.topPart} は、モデル上位部位と概ね一致しています。`
+      : ` 主観上の最重要部位 ${userFb.saved.topPart} とモデル上位部位には差があります。`;
+  }
+  return text;
 }
 
 function buildSummary(r) {
@@ -253,7 +344,12 @@ function buildTrendBlock(curr, prev) {
   const GNow = num(curr?.global?.G);
   const GPrev = num(prev?.global?.G);
 
-  if (!Number.isFinite(maxSNow) || !Number.isFinite(maxSPrev) || !Number.isFinite(GNow) || !Number.isFinite(GPrev)) {
+  if (
+    !Number.isFinite(maxSNow) ||
+    !Number.isFinite(maxSPrev) ||
+    !Number.isFinite(GNow) ||
+    !Number.isFinite(GPrev)
+  ) {
     return {
       title: "前日比較",
       body: "maxS または G の前日比較に必要な情報が不足しているため、比較は行っていません。",
@@ -380,7 +476,9 @@ function buildInternalDistributionBlock(r) {
     body += ` 次点は ${second.part}（m_eff=${fmt(second.m_eff)}）です。`;
   }
 
-  const couplingTargets = [ach, plantar].filter((x) => x && Number.isFinite(x.m_eff) && x.m_eff > 0);
+  const couplingTargets = [ach, plantar].filter(
+    (x) => x && Number.isFinite(x.m_eff) && x.m_eff > 0
+  );
   if (couplingTargets.length) {
     body += ` また、${COUPLING_SOURCE_PART} からの再配分により ${couplingTargets
       .map((x) => `${x.part}（m_eff=${fmt(x.m_eff)}）`)
@@ -550,7 +648,9 @@ function buildCautionBlock(r) {
 
 export function buildSpikeRankText(r, topN = 3) {
   const ranked = sortBySpikeDesc(getPartEntries(r)).slice(0, topN);
-  return ranked.map((x, i) => `${i + 1}位 ${x.part} (${fmt(x.S)})`).join(" / ");
+  return ranked
+    .map((x, i) => `${i + 1}位 ${x.part} (${fmt(x.S)})`)
+    .join(" / ");
 }
 
 export function buildDetailedFeedback(results, index) {
@@ -563,6 +663,7 @@ export function buildDetailedFeedback(results, index) {
     headline: buildHeadline(curr),
     spikeRankText: buildSpikeRankText(curr),
     overall: buildOverallBlock(curr),
+    userFeedback: buildUserFeedbackSummary(curr),
     trend: buildTrendBlock(curr, prev),
     external: buildExternalBlock(curr, prev),
     internal: buildInternalBlock(curr, prev),
@@ -596,6 +697,7 @@ export function flattenFeedbackToLines(feedback) {
   };
 
   pushBlock(feedback.overall);
+  pushBlock(feedback.userFeedback);
   pushBlock(feedback.trend);
   pushBlock(feedback.external);
   pushBlock(feedback.internal);

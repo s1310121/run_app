@@ -11,11 +11,18 @@ import {
 function sum(arr) {
   return arr.reduce((a, b) => a + b, 0);
 }
+
 function alphaFromN(N) {
   return 2 / (N + 1);
 }
+
 function isFiniteNumber(x) {
   return Number.isFinite(x);
+}
+
+function toFiniteNumber(x, fallback = 0) {
+  const n = Number(x);
+  return Number.isFinite(n) ? n : fallback;
 }
 
 /** date helpers */
@@ -40,29 +47,37 @@ export function expandDays(baseDay, nDays) {
 
 /** 派生量 */
 function computeDerived(day, cfg) {
-  const D_m = Number(day.dist_km) * 1000;
-  const T_s = Number(day.time_min) * 60;
+  const distKm = toFiniteNumber(day.dist_km, 0);
+  const timeMin = toFiniteNumber(day.time_min, 0);
+
+  const D_m = distKm * 1000;
+  const T_s = timeMin * 60;
   const V_mps = D_m / (T_s + cfg.eps);
 
-  const G_plus =
-    (Number(day.up_pct) / 100) * (Number(day.up_grade_pct) / 100);
-  const G_minus =
-    (Number(day.down_pct) / 100) * (Number(day.down_grade_pct) / 100);
+  const upPct = toFiniteNumber(day.up_pct, 0);
+  const downPct = toFiniteNumber(day.down_pct, 0);
+  const upGradePct = toFiniteNumber(day.up_grade_pct, 0);
+  const downGradePct = toFiniteNumber(day.down_grade_pct, 0);
+
+  const G_plus = (upPct / 100) * (upGradePct / 100);
+  const G_minus = (downPct / 100) * (downGradePct / 100);
+
+  const pavedPct = toFiniteNumber(day.surface_paved_pct, 0);
+  const trailPct = toFiniteNumber(day.surface_trail_pct, 0);
+  const treadmillPct = toFiniteNumber(day.surface_treadmill_pct, 0);
+  const trackPct = toFiniteNumber(day.surface_track_pct, 0);
 
   const c = cfg.surfaceCoeff;
   const S_surface =
     (
-      Number(day.surface_paved_pct) * c.paved +
-      Number(day.surface_trail_pct) * c.trail +
-      Number(day.surface_treadmill_pct) * c.treadmill +
-      Number(day.surface_track_pct) * c.track
+      pavedPct * c.paved +
+      trailPct * c.trail +
+      treadmillPct * c.treadmill +
+      trackPct * c.track
     ) / 100.0;
 
   const surfaceSumPct =
-    Number(day.surface_paved_pct) +
-    Number(day.surface_trail_pct) +
-    Number(day.surface_treadmill_pct) +
-    Number(day.surface_track_pct);
+    pavedPct + trailPct + treadmillPct + trackPct;
 
   const Vratio = V_mps / (cfg.Vref + cfg.eps);
   const r_v = (V_mps - cfg.Vref) / (cfg.Vref + cfg.eps);
@@ -82,7 +97,7 @@ function computeDerived(day, cfg) {
 
 /** 外的総負荷・内的負荷（内訳も返す） */
 function computeTotals(day, derived, cfg) {
-  const term_steps = Number(day.steps);
+  const term_steps = toFiniteNumber(day.steps, 0);
   const term_speed = derived.Vratio ** 2;
   const term_slope =
     1 + cfg.kG_plus * derived.G_plus + cfg.kG_minus * derived.G_minus;
@@ -91,7 +106,7 @@ function computeTotals(day, derived, cfg) {
   const L_ext_total =
     term_steps * term_speed * term_slope * term_surface;
 
-  const L_int = derived.T_s * Number(day.RPE);
+  const L_int = derived.T_s * toFiniteNumber(day.RPE, 0);
 
   return {
     L_ext_total,
@@ -106,22 +121,37 @@ function computeTotals(day, derived, cfg) {
   };
 }
 
-/** softmax 安定化 */
+/**
+ * softmax（数値安定版）
+ * - maxScore を引いてオーバーフローを防ぐ
+ * - denom が不正なら一様分布へフォールバック
+ */
 function softmaxFromScores(scoreMap, eps = 1e-12) {
-  const values = BODY_PARTS.map((k) => scoreMap[k]);
+  const values = BODY_PARTS.map((k) => toFiniteNumber(scoreMap[k], 0));
   const maxScore = Math.max(...values);
 
   const expMap = {};
   let denom = 0;
+
   for (const k of BODY_PARTS) {
-    const v = Math.exp(scoreMap[k] - maxScore);
-    expMap[k] = v;
-    denom += v;
+    const shifted = toFiniteNumber(scoreMap[k], 0) - maxScore;
+    const v = Math.exp(shifted);
+    expMap[k] = Number.isFinite(v) ? v : 0;
+    denom += expMap[k];
   }
 
   const w = {};
+
+  if (!Number.isFinite(denom) || denom <= eps) {
+    const uniform = 1 / BODY_PARTS.length;
+    for (const k of BODY_PARTS) {
+      w[k] = uniform;
+    }
+    return { w, denom, maxScore };
+  }
+
   for (const k of BODY_PARTS) {
-    w[k] = expMap[k] / denom ;
+    w[k] = expMap[k] / denom;
   }
 
   return { w, denom, maxScore };
@@ -133,11 +163,11 @@ function computeWeights(derived, cfg) {
 
   for (const k of BODY_PARTS) {
     z[k] =
-      cfg.a0[k] +
-      cfg.beta_v[k] * derived.r_v +
-      cfg.beta_u[k] * derived.G_plus +
-      cfg.beta_d[k] * derived.G_minus +
-      cfg.beta_s[k] * derived.S_surface;
+      toFiniteNumber(cfg.a0[k], 0) +
+      toFiniteNumber(cfg.beta_v[k], 0) * derived.r_v +
+      toFiniteNumber(cfg.beta_u[k], 0) * derived.G_plus +
+      toFiniteNumber(cfg.beta_d[k], 0) * derived.G_minus +
+      toFiniteNumber(cfg.beta_s[k], 0) * derived.S_surface;
   }
 
   const soft = softmaxFromScores(z, cfg.eps);
@@ -154,7 +184,7 @@ function computeWeights(derived, cfg) {
 function computeExternalByPart(L_ext_total, w) {
   const L_ext = {};
   for (const k of BODY_PARTS) {
-    L_ext[k] = w[k] * L_ext_total;
+    L_ext[k] = toFiniteNumber(w[k], 0) * L_ext_total;
   }
   return L_ext;
 }
@@ -170,10 +200,10 @@ function computeEffectiveInternalWeights(cfg) {
   for (const k of BODY_PARTS) m_eff[k] = 0;
 
   const sourcePart = COUPLING_SOURCE_PART;
-  const sourceBase = cfg.m0[sourcePart] ?? 0;
+  const sourceBase = toFiniteNumber(cfg.m0[sourcePart], 0);
 
-  const tauAch = cfg.tauAch ?? 0;
-  const tauPlantar = cfg.tauPlantar ?? 0;
+  const tauAch = toFiniteNumber(cfg.tauAch, 0);
+  const tauPlantar = toFiniteNumber(cfg.tauPlantar, 0);
 
   // 安全対策：再配分率の合計が 1 を超えないように制限
   const tauSum = tauAch + tauPlantar;
@@ -184,7 +214,7 @@ function computeEffectiveInternalWeights(cfg) {
 
   for (const k of CONTRACTILE_PARTS) {
     if (k === sourcePart) continue;
-    m_eff[k] = cfg.m0[k] ?? 0;
+    m_eff[k] = toFiniteNumber(cfg.m0[k], 0);
   }
 
   m_eff[sourcePart] =
@@ -212,7 +242,7 @@ function computeIntegratedByPart(L_ext, L_int, cfg) {
   const L = {};
 
   for (const k of BODY_PARTS) {
-    L[k] = L_ext[k] + internal.m_eff[k] * L_int;
+    L[k] = toFiniteNumber(L_ext[k], 0) + toFiniteNumber(internal.m_eff[k], 0) * L_int;
   }
 
   return {
@@ -228,7 +258,7 @@ function computeIntegratedByPart(L_ext, L_int, cfg) {
 function lagMean(series, t, B) {
   let s = 0;
   for (let i = 1; i <= B; i++) {
-    s += series[t - i];
+    s += toFiniteNumber(series[t - i], 0);
   }
   return s / B;
 }
@@ -270,10 +300,10 @@ function computeStandardizedLoad(L, bar, cfg) {
  */
 function isRestDay(day, cfg) {
   return (
-    Math.abs(Number(day.steps)) < cfg.tol &&
-    Math.abs(Number(day.dist_km)) < cfg.tol &&
-    Math.abs(Number(day.time_min)) < cfg.tol &&
-    Math.abs(Number(day.RPE)) < cfg.tol
+    Math.abs(toFiniteNumber(day.steps, 0)) < cfg.tol &&
+    Math.abs(toFiniteNumber(day.dist_km, 0)) < cfg.tol &&
+    Math.abs(toFiniteNumber(day.time_min, 0)) < cfg.tol &&
+    Math.abs(toFiniteNumber(day.RPE, 0)) < cfg.tol
   );
 }
 
@@ -430,12 +460,17 @@ export function runModel(days, config = DEFAULT_CONFIG) {
         let R;
         if (Math.abs(A_state[k]) < cfg.tol && Math.abs(C_state[k]) < cfg.tol) {
           R = 1.0;
-        } else if(Math.abs(C_state[k]) < cfg.tol) {
-          R - 1.0;
+        } else if (Math.abs(C_state[k]) < cfg.tol) {
+          R = 1.0;
         } else {
           R = A_state[k] / C_state[k];
         }
-  
+
+        // log の安全性確保
+        if (!Number.isFinite(R) || R <= 0) {
+          R = 1.0;
+        }
+
         const S = Math.log(R);
 
         parts[k].A = A_state[k];
