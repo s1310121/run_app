@@ -524,3 +524,11 @@ form > section + section {
 #partsTable {
   overflow-x: auto;
 }
+
+#course {
+  background: #fff;
+}
+
+.note-box select {
+  margin-top: 6px;
+}
