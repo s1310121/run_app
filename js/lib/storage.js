@@ -7,6 +7,9 @@ const KEYS = {
   userAdjustments: "app:userAdjustments",
   adjustmentAppliedDates: "app:adjustmentAppliedDates",
   adjustmentPendingByDate: "app:adjustmentPendingByDate",
+
+  /* ★追加 */
+  lastCourse: "app:lastCourse",
 };
 
 const DEFAULT_USER_ADJUSTMENTS = {
@@ -286,6 +289,20 @@ export function removeAdjustmentPending(date) {
 
 export function clearAdjustmentPendingByDate() {
   localStorage.removeItem(KEYS.adjustmentPendingByDate);
+}
+
+/* ===== 前回コース保存 ===== */
+export function saveLastCourse(courseKey) {
+  if (!courseKey) return;
+  localStorage.setItem(KEYS.lastCourse, courseKey);
+}
+
+export function loadLastCourse() {
+  return localStorage.getItem(KEYS.lastCourse) || "";
+}
+
+export function clearLastCourse() {
+  localStorage.removeItem(KEYS.lastCourse);
 }
 
 export function clearAllAppData() {
