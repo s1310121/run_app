@@ -81,6 +81,21 @@
                 <input id="RPE" type="number" step="1" min="0" max="10" />
               </label>
             </div>
+
+            <div class="note-box" style="margin-top:12px;">
+              <label>
+                コース設定
+                <select id="course">
+                  <option value="">手動入力</option>
+                  <option value="flat">平地コース</option>
+                  <option value="hill">坂コース</option>
+                  <option value="trail">トレイルコース</option>
+                  <option value="river">河川敷コース</option>
+                </select>
+              </label>
+              コースを選択すると、勾配条件と路面条件が自動入力されます。<br />
+              自動入力後も数値は手動で修正できます。
+            </div>
           </fieldset>
 
           <fieldset>
