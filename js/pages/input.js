@@ -1,4 +1,5 @@
 import { BODY_PARTS, DEFAULT_CONFIG } from "../core/constants.js";
+import { COURSE_CONFIG } from "../core/courseConfig.js";
 import { expandDays, runModel } from "../core/model.js";
 import { validateDayInput, validateDays } from "../lib/validate.js";
 import {
@@ -15,6 +16,8 @@ import {
   replaceDayEntries,
   upsertDayFeedback,
   loadDayFeedback,
+  saveLastCourse,
+  loadLastCourse,
 } from "../lib/storage.js";
 
 function getVal(id) {
@@ -131,6 +134,38 @@ function loadFeedbackForCurrentDate() {
   } else {
     clearFeedbackForm();
   }
+}
+
+function applyCourse(courseKey, { save = true } = {}) {
+  if (!courseKey) return;
+
+  const preset = COURSE_CONFIG[courseKey];
+  if (!preset) return;
+
+  setVal("up_pct", preset.up_pct);
+  setVal("down_pct", preset.down_pct);
+  setVal("up_grade_pct", preset.up_grade_pct);
+  setVal("down_grade_pct", preset.down_grade_pct);
+  setVal("surface_paved_pct", preset.surface_paved_pct);
+  setVal("surface_trail_pct", preset.surface_trail_pct);
+  setVal("surface_treadmill_pct", preset.surface_treadmill_pct);
+  setVal("surface_track_pct", preset.surface_track_pct);
+
+  if (save) {
+    saveLastCourse(courseKey);
+  }
+}
+
+function restoreLastCourse() {
+  const courseKey = loadLastCourse();
+  if (!courseKey) return;
+
+  const courseEl = document.getElementById("course");
+  if (!courseEl) return;
+  if (!COURSE_CONFIG[courseKey]) return;
+
+  courseEl.value = courseKey;
+  applyCourse(courseKey, { save: false });
 }
 
 function showErrors(errors = []) {
@@ -442,11 +477,24 @@ saveConfig(cfg);
 buildFeedbackInputs();
 
 const draft = loadDraft();
-if (draft) writeForm(draft);
+if (draft) {
+  writeForm(draft);
+  const lastCourse = loadLastCourse();
+  if (lastCourse) setVal("course", lastCourse);
+} else {
+  restoreLastCourse();
+}
 
 loadFeedbackForCurrentDate();
 
 document.getElementById("date")?.addEventListener("change", loadFeedbackForCurrentDate);
+
+document.getElementById("course")?.addEventListener("change", (e) => {
+  const key = e.target.value;
+  if (!key) return;
+  applyCourse(key, { save: true });
+  saveDraft(readForm());
+});
 
 document.getElementById("form")?.addEventListener("input", (e) => {
   const target = e.target;
@@ -478,6 +526,9 @@ document.getElementById("btnCalc")?.addEventListener("click", () => {
 
   showErrors([]);
   showWarnings(v.warnings ?? []);
+
+  const courseKey = getVal("course");
+  if (courseKey) saveLastCourse(courseKey);
 
   const allDays = upsertDayEntry(baseDay);
   upsertDayFeedback(baseDay.date, feedback);
@@ -627,6 +678,9 @@ document.getElementById("btnCalcSim")?.addEventListener("click", () => {
 
   showErrors([]);
   showWarnings(v.warnings ?? []);
+
+  const courseKey = getVal("course");
+  if (courseKey) saveLastCourse(courseKey);
 
   const nDays = Number(document.getElementById("nDays")?.value || 28);
   const days = expandDays(baseDay, nDays);
